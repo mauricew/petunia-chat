@@ -1,40 +1,53 @@
-import * as fs from 'node:fs'
+import { useState } from 'react';
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 
-/*
-const filePath = 'count.txt'
+import { chatStream } from 'lib/ollama-chat'
 
-async function readCount() {
-  return parseInt(
-    await fs.promises.readFile(filePath, 'utf-8').catch(() => '0'),
-  )
-}
+const submitChatStream = createServerFn({ method: 'POST', response: 'raw' })
+  .validator((msg: string | undefined) => msg)
+  .handler(async ({ data, signal }) => {
+    // Create a ReadableStream to send chunks of data
+    const stream = new ReadableStream({
+      async start(controller) {
+        const chatResponse = await chatStream(data!);
 
-const getCount = createServerFn({
-  method: 'GET',
-}).handler(() => {
-  return readCount()
+        for await (const part of chatResponse) {
+          if (part.done) {
+            controller.close();
+            return;
+          }
+          controller.enqueue(new TextEncoder().encode(part.message.content));
+        }
+
+        // Ensure we clean up if the request is aborted
+        signal.addEventListener('abort', () => {
+          controller.close()
+        })
+      },
+    })
+  // Return a streaming response
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    },
+  })
 })
 
-const updateCount = createServerFn({ method: 'POST' })
-  .validator((d: number) => d)
-  .handler(async ({ data }) => {
-    const count = await readCount()
-    await fs.promises.writeFile(filePath, `${count + data}`)
-  })
-*/
 export const Route = createFileRoute('/')({
   component: Home,
-  // loader: async () => await getCount(),
 })
 
 function Home() {
   // const router = useRouter()
   // const state = Route.useLoaderData()
 
+  const [responseText, setResponseText] = useState('');
+
   return (
-    <div className="h-screen flex">
+    <div className="h-screen flex fixed">
       <nav className="w-60 h-full flex flex-col p-4">
         <h1 className="mb-4 text-center">Petunia chat</h1>
         <ul>
@@ -45,17 +58,41 @@ function Home() {
         <span className="mt-auto"></span>
         <button className="text-left">Log in</button>
       </nav>
-      <div className="h-full flex flex-col">
-        <div className="grow">
-          <p className="p-4">
-            You're about to witness the world's greatest chat app,
-            <br />gonna zap the rest no cap cause it'll slap it won't be crap I gotta nap so end of rap.
-            Jeb: "please clap"
-          </p>
+      <div className="h-full w-full flex flex-col">
+        <div className="w-full grow">
+          {!responseText && (
+            <p className="m-4 p-4 bg-amber-50 border border-amber-300">
+              You're about to witness the world's greatest chat app,
+              <br />gonna zap the rest no cap cause it'll slap it won't be crap I gotta nap so end of rap.
+              Jeb: "please clap"
+            </p>
+          )}
+          {responseText && (
+            <div className="w-full p-4 overflow-auto whitespace-pre-line">{responseText}</div>
+          )}
         </div>
-        <div>
-          <textarea className="w-full p-2 border resize-none" placeholder="Chat away" />
-        </div>
+        <form className="flex" onSubmit={async (event) => {
+          event.preventDefault();
+          const formData = new FormData(event.currentTarget);
+          const response = await submitChatStream({ data: formData.get('msg')?.toString() });
+          const reader = response.body?.getReader();
+          const decoder = new TextDecoder();
+          setResponseText('');
+          reader?.read().then(function consume({ done, value }) {
+            if (done) {
+              return;
+            }
+            setResponseText(prev => `${prev}${decoder.decode(value)}`)
+            return reader.read().then(consume);
+          })
+        }}>
+          <textarea 
+            name="msg"
+            className="w-full p-2 border resize-none"
+            placeholder="Chat away"
+          />
+          <button type="submit" className="px-4 py-1">Chat</button>
+        </form>
       </div>
     </div>
   )
