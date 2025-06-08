@@ -34,10 +34,29 @@ function Home() {
   // const state = Route.useLoaderData()
 
   return (
-    <p>
-      You're about to witness the world's greatest chat app,
-      <br />gonna zap the rest no cap cause it'll slap it won't be crap I gotta nap so end of rap.
-      Jeb: "please clap"
-    </p>
+    <div className="h-screen flex">
+      <nav className="w-60 h-full flex flex-col p-4">
+        <h1 className="mb-4 text-center">Petunia chat</h1>
+        <ul>
+          <li>History item 1</li>
+          <li>History item 2</li>
+          <li>History item 3</li>
+        </ul>
+        <span className="mt-auto"></span>
+        <button className="text-left">Log in</button>
+      </nav>
+      <div className="h-full flex flex-col">
+        <div className="grow">
+          <p className="p-4">
+            You're about to witness the world's greatest chat app,
+            <br />gonna zap the rest no cap cause it'll slap it won't be crap I gotta nap so end of rap.
+            Jeb: "please clap"
+          </p>
+        </div>
+        <div>
+          <textarea className="w-full p-2 border resize-none" placeholder="Chat away" />
+        </div>
+      </div>
+    </div>
   )
 }
