@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 
 import { chatStream } from 'lib/ollama-chat'
+import { marked } from 'marked';
 
 const submitChatStream = createServerFn({ method: 'POST', response: 'raw' })
   .validator((msg: string | undefined) => msg)
@@ -41,13 +42,11 @@ export const Route = createFileRoute('/')({
 })
 
 function Home() {
-  // const router = useRouter()
-  // const state = Route.useLoaderData()
-
   const [responseText, setResponseText] = useState('');
+  const responseMarked = useMemo(() => marked(responseText), [responseText]);
 
   return (
-    <div className="h-screen flex fixed">
+    <div className="h-screen w-screen flex fixed">
       <nav className="w-60 h-full flex flex-col p-4">
         <h1 className="mb-4 text-center">Petunia chat</h1>
         <ul>
@@ -59,7 +58,7 @@ function Home() {
         <button className="text-left">Log in</button>
       </nav>
       <div className="h-full w-full flex flex-col">
-        <div className="w-full grow">
+        <div className="w-full grow overflow-auto border border-slate-200">
           {!responseText && (
             <p className="m-4 p-4 bg-amber-50 border border-amber-300">
               You're about to witness the world's greatest chat app,
@@ -68,7 +67,10 @@ function Home() {
             </p>
           )}
           {responseText && (
-            <div className="w-full p-4 overflow-auto whitespace-pre-line">{responseText}</div>
+            <div 
+              className="w-full p-4 overflow-auto"
+              dangerouslySetInnerHTML={{ __html: responseMarked }}>
+            </div>
           )}
         </div>
         <form className="flex" onSubmit={async (event) => {
