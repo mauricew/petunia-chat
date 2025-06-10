@@ -5,7 +5,23 @@ import {
   HeadContent,
   Scripts,
 } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start';
+
 import '../globals.css'
+import { getUser } from 'db/queries';
+import { useAuthSession } from 'lib/session';
+
+const initLoadUser = createServerFn({ method: 'GET' })
+  .handler(async () => {
+    const session = await useAuthSession(process.env.SESSION_SECRET!);
+
+    if (!session.data.email) {
+      return null;
+    }
+
+    const user = await getUser(session.data.email);
+    return user;
+  })
 
 export const Route = createRootRoute({
   head: () => ({
@@ -23,6 +39,10 @@ export const Route = createRootRoute({
     ],
   }),
   component: RootComponent,
+  beforeLoad: async () => {
+    const user = await initLoadUser();
+    return { user };
+  }
 })
 
 function RootComponent() {

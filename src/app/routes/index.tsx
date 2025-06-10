@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
-import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { marked } from 'marked';
+import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 
 import { chatStream } from 'lib/ollama-chat'
-import { marked } from 'marked';
+import { Route as LoginRoute } from './login';
+import { Route as LogoutRoute } from './logout';
 
 const submitChatStream = createServerFn({ method: 'POST', response: 'raw' })
   .validator((msg: string | undefined) => msg)
@@ -42,6 +44,8 @@ export const Route = createFileRoute('/')({
 })
 
 function Home() {
+  const { user } = Route.useRouteContext();
+
   const [responseText, setResponseText] = useState('');
   const responseMarked = useMemo(() => marked(responseText), [responseText]);
 
@@ -55,7 +59,15 @@ function Home() {
           <li>History item 3</li>
         </ul>
         <span className="mt-auto"></span>
-        <button className="text-left">Log in</button>
+        {user && (
+          <div>
+            <p>{user.email}</p>
+            <Link to={LogoutRoute.to}>Log out</Link>
+          </div>
+        )}
+        {!user && (
+          <Link to={LoginRoute.to} className="text-left">Log in</Link>
+        )}
       </nav>
       <div className="h-full w-full flex flex-col">
         <div className="w-full grow overflow-auto border border-slate-200">
