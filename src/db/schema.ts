@@ -1,4 +1,5 @@
-import { boolean, integer, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
+import { boolean, integer, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
 
 const auditTimestamps = {
   createdAt: timestamp().notNull().defaultNow(),
@@ -11,3 +12,24 @@ export const usersTable = pgTable('users', {
   emailVerified: boolean(),
   ...auditTimestamps,
 })
+
+export const threadsTable = pgTable('threads', {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  name: text(),
+  userId: integer().notNull().references(() => usersTable.id),
+  ...auditTimestamps,
+});
+
+export const threadMessagesTable = pgTable('thread_messages', {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  threadId: integer().notNull().references(() => threadsTable.id),
+  role: text(),
+  content: text().notNull(),
+  state: text(),
+  completedAt: timestamp(),
+  ...auditTimestamps,
+});
+
+export const threadMessageRelations = relations(threadsTable, ({ many }) => ({
+  threadMessages: many(threadMessagesTable)
+}));
