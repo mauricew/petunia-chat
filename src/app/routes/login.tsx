@@ -39,15 +39,15 @@ const loginOrRegister = createServerFn({ method: 'POST' })
 
 export const Route = createFileRoute('/login')({
   component: Login,
+  loader: ({ context }) => {
+    if (context.user) {
+      throw redirect({ to: '/' });
+    }
+  }
 })
 
 function Login() {
   const router = useRouter();
-  const { user } = Route.useRouteContext();
-
-  if (user) {
-    throw redirect(IndexRoute);
-  }
 
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -65,7 +65,6 @@ function Login() {
               const formData = new FormData(event.currentTarget);
               try {
                 await loginOrRegister({ data: formData });
-                await router.invalidate();
                 router.navigate(IndexRoute);
               } catch (err) {
                 setErrorMessage(err);

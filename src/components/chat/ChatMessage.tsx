@@ -7,25 +7,27 @@ type ChatMessageProps = {
 }
 
 export const ChatMessage = ({ message }: ChatMessageProps) => {
-  
   const messageMarked = useMemo(() => marked(message.content!), [message]);
   
   return (
-    <div className="inline-flex flex-col p-4 border">
-      <small className="block mb-2">
+    <li className={`inline-block ${message.role === 'user' ? 'self-end ml-4' : 'self-start mr-4'}`}>
+      <small className="block mb-1">
         {message.role}; {' '}
         <time dateTime={message.createdAt?.toISOString()}>{message.createdAt?.toLocaleString()}</time>
         {message.state === 'generating' && '; generating...'}
       </small>
       {message.role === 'assistant' && (
-        <div dangerouslySetInnerHTML={{ __html: messageMarked }}>
+        <div 
+          dangerouslySetInnerHTML={{ __html: messageMarked }} 
+          className="px-4 py-3 border border-fuchsia-200 rounded"
+        >
         </div>
       )}
       {message.role !== 'assistant' && (
-        <p>
+        <p className="px-4 py-3 border border-slate-400 rounded-lg">
           {message.content}
         </p>
       )}
-    </div>
+    </li>
   )
 };

@@ -1,0 +1,72 @@
+import { useState } from "react";
+import { Link } from "@tanstack/react-router";
+
+import { threadMessagesTable, threadsTable, usersTable } from "db/schema";
+import { Route as IndexRoute } from '../app/routes/index';
+import { Route as LoginRoute } from '../app/routes/login';
+import { Route as LogoutRoute } from '../app/routes/logout';
+
+export default function Sidebar(props: {
+  curThread: {
+    thread: typeof threadsTable.$inferSelect | null;
+    messages: Array<typeof threadMessagesTable.$inferSelect> | null;
+  } | null,
+  user: (typeof usersTable.$inferSelect) | null,
+  userThreads: Array< typeof threadsTable.$inferSelect> 
+}) {
+  const { curThread, user, userThreads } = props;
+  const [showMore, setShowMore] = useState(false);
+
+  return (
+    <nav className="w-60 h-full flex flex-col">
+      <h1 className="mb-4 px-4 py-3 text-center text-lg font-semibold bg-fuchsia-100 text-fuchsia-900 border-b border-fuchsia-400">
+        Petunia chat
+      </h1>
+      <div className="flex flex-col flex-1 px-4 py-2">
+        <Link
+          to="/" search={{ threadId: undefined }}
+          className="flex justify-center p-2 rounded-xl text-lg font-medium bg-fuchsia-100 text-fuchsia-800 border border-fuchsia-300 text-center duration-150 hover:bg-fuchsia-200"
+          activeProps={{ className: "bg-fuchsia-800 !text-fuchsia-200 hover:bg-fuchsia-700" }}
+          activeOptions={{ includeSearch: true, exact: true }}
+        >
+          New Chat
+        </Link>
+        <ul className="h-64 my-4 space-y-2 grow text-sm overflow-auto">
+          {user && userThreads.length === 0 && (
+            <li role="presentation">Time to chat.</li>
+          )}
+          {user && userThreads.length > 0 && userThreads.slice(0, showMore ? 50 : 5).map((thread) => (
+            <li key={thread.id}>
+              <Link
+                to={IndexRoute.to} search={{ threadId: thread.id }}
+                className="block p-2 bg-fuchsia-50 border border-fuchsia-300 text-fuchsia-700 rounded whitespace-nowrap overflow-hidden text-ellipsis duration-150 hover:whitespace-normal hover:text-fuchsia-900"
+                activeProps={{ className: 'bg-fuchsia-200 text-fuchsia-800 font-semibold' }}
+              >
+                {curThread?.thread?.id === thread.id && '→ '}
+                {thread.name}
+              </Link>
+            </li>
+          ))}
+          {user && userThreads.length > 5 && (
+            <li role="presentation">
+              <button type="button" onClick={() => setShowMore(!showMore)}>
+                Show {showMore ? 'Less' : 'More'}
+              </button>
+            </li>
+          )}
+        </ul>
+        
+        <span className="mt-auto"></span>
+        {user && (
+          <div>
+            <p className="font-semibold">{user.email}</p>
+            <Link to={LogoutRoute.to} className="py-2 text-sm">Log out</Link>
+          </div>
+        )}
+        {!user && (
+          <Link to={LoginRoute.to} className="py-2 text-left">Log in</Link>
+        )}
+      </div>
+    </nav>
+  )
+}

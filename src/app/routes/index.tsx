@@ -1,17 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { eq, sql } from 'drizzle-orm';
 
 import { chatStream } from 'lib/ollama-chat'
-import { Route as LoginRoute } from './login';
-import { Route as LogoutRoute } from './logout';
 import { useAuthSession } from 'lib/session';
-import { getLastUserMessage, getThread, getThreadMessages, getUser, getUserThreads } from 'db/queries';
+import { getThread, getThreadMessages, getUser, getUserThreads } from 'db/queries';
 import { db } from 'db';
 import { threadMessagesTable, threadsTable } from 'db/schema';
 import { generateThreadName } from 'lib/actions';
 import { ChatMessage } from 'components/chat/ChatMessage';
+import Sidebar from 'components/Sidebar';
 
 type IndexParams = {
   threadId?: number;
@@ -177,51 +176,68 @@ function Home() {
   const navigate = Route.useNavigate();
 
   const [messageInput, setMessageInput] = useState('');
-  const [showMore, setShowMore] = useState(false);
   const [responseText, setResponseText] = useState('');
+  const [running, setRunning] = useState(false);
+
+  const chatViewRef = useRef<HTMLDivElement>(null);
+
+  const executeSubmission = async (form: HTMLFormElement) => {
+    if (!messageInput) {
+      return;
+    }
+    setResponseText('');
+    setRunning(true);
+    const formData = new FormData(form);
+    const message = formData.get('msg')?.toString();
+
+    let thread = curThread?.thread;
+    if (thread) {
+      await appendThread({ data: { threadId: thread.id, msg: message }});
+      router.invalidate();
+    } else {
+      thread = await createThread({ data: message });
+      navigate({ search: { threadId: thread!.id }});
+    }
+    setMessageInput('');
+
+    const response = await startChatStream({ data: thread!.id });
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    setResponseText('');
+    reader?.read().then(function consume({ done, value }) {
+      if (done) {
+        router.invalidate();
+        setRunning(false);
+        return;
+      }
+      setResponseText(prev => `${prev}${decoder.decode(value)}`);
+      if (curThread && chatViewRef.current) {
+        chatViewRef.current.scrollTop = chatViewRef.current?.scrollHeight;
+      }
+      return reader.read().then(consume);
+    })
+  }
 
   if (threadId && !curThread?.thread) {
     navigate({ search: { threadId: undefined } });
   }
+
+  // o noz I use effect death penalty.
+  useEffect(() => {
+    if (curThread && chatViewRef.current) {
+      chatViewRef.current.scrollTop = chatViewRef.current?.scrollHeight;
+    }
+  }, [curThread])
   
   return (
-    <div className="h-screen w-screen flex fixed">
-      <nav className="w-60 h-full flex flex-col p-4">
-        <h1 className="mb-4 text-center">Petunia chat</h1>
-        <ul>
-          {user && userThreads.length === 0 && (
-            <li role="presentation">Time to chat.</li>
-          )}
-          <li>
-            <Link to="/">New Chat</Link>
-          </li>
-          {user && userThreads.length > 0 && userThreads.slice(0, showMore ? 50 : 5).map((thread) => (
-            <li key={thread.id}>
-              <Link to={Route.to} search={{ threadId: thread.id }}>
-                {curThread?.thread?.id === thread.id && '→'}
-                {thread.name}
-              </Link>
-            </li>
-          ))}
-        </ul>
-        {user && userThreads.length > 5 && (
-          <button type="button" onClick={() => setShowMore(!showMore)}>
-            Show {showMore ? 'Less' : 'More'}
-          </button>
-        )}
-        <span className="mt-auto"></span>
-        {user && (
-          <div>
-            <p>{user.email}</p>
-            <Link to={LogoutRoute.to}>Log out</Link>
-          </div>
-        )}
-        {!user && (
-          <Link to={LoginRoute.to} className="text-left">Log in</Link>
-        )}
-      </nav>
-      <div className="h-full w-full flex flex-col">
-        <div className="w-full grow overflow-auto border border-slate-200">
+    <div className="h-screen w-screen flex flex-row bg-zinc-50">
+      <Sidebar
+        curThread={curThread}
+        user={user}
+        userThreads={userThreads}
+      />
+      <div className="w-full grow flex flex-col">
+        <div className="w-full grow border border-fuchsia-200 overflow-auto" ref={chatViewRef}>
           {!curThread && (
             <p className="m-4 p-4 bg-amber-50 border border-amber-300">
               You're about to witness the world's greatest chat app,
@@ -230,57 +246,44 @@ function Home() {
             </p>
           )}
           {curThread && curThread.messages && (
-            <ol>
+            <ol className="flex flex-col justify-end px-2 py-4 space-y-2">
               {curThread.messages.map(msg => (
-                <li key={msg.id}>
-                  <ChatMessage message={
+                <ChatMessage 
+                  key={msg.id}
+                  message={
                     msg.role === 'assistant' && msg.state === 'generating'
                     ? { ...msg, content: responseText }
                     : msg
                   } />
-                </li>
               ))}
             </ol>
           )}
         </div>
         <form className="flex" onSubmit={async (event) => {
           event.preventDefault();
-          setResponseText('');
-          const formData = new FormData(event.currentTarget);
-          const message = formData.get('msg')?.toString();
-
-          let thread = curThread?.thread;
-          if (thread) {
-            await appendThread({ data: { threadId: thread.id, msg: message }});
-            router.invalidate();
-          } else {
-            thread = await createThread({ data: message });
-            navigate({ search: { threadId: thread!.id }});
-          }
-          setMessageInput('');
-
-          const response = await startChatStream({ data: thread!.id });
-          const reader = response.body?.getReader();
-          const decoder = new TextDecoder();
-          setResponseText('');
-          reader?.read().then(function consume({ done, value }) {
-            if (done) {
-              router.invalidate();
-              return;
-            }
-            setResponseText(prev => `${prev}${decoder.decode(value)}`)
-            return reader.read().then(consume);
-          })
+          await executeSubmission(event.currentTarget);
         }}>
           <textarea 
             name="msg"
-            className="w-full p-2 border resize-none"
-            placeholder={user ? "Chat away" : "For now I gotta have you log in to use this thing."}
-            readOnly={!user}
+            className="w-full p-2 border border-fuchsia-200 border-r-transparent resize-none"
+            placeholder={running ? "Generating response..." : user ? "Chat away" : "For now I gotta have you log in to use this thing."}
+            readOnly={!user || running}
             value={messageInput}
             onChange={e => setMessageInput(e.target.value)}
+            onKeyDown={async (e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                await executeSubmission(e.currentTarget.form!);
+              }
+            }}
           />
-          <button type="submit" className="px-4 py-1" disabled={!user}>Chat</button>
+          <button 
+            type="submit"
+            className="px-4 py-1 border border-fuchsia-600 bg-fuchsia-200 font-bold duration-150 hover:bg-gradient-to-tl from-fuchsia-200 to-fuchsia-300 disabled:opacity-50"
+            disabled={!user || running}
+          >
+            Chat
+          </button>
         </form>
       </div>
     </div>
