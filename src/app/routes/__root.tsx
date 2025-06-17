@@ -7,7 +7,7 @@ import {
 } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start';
 
-import '../globals.css'
+import tailwindCss from '../globals.css?url'
 import { getUser } from 'db/queries';
 import { useAuthSession } from 'lib/session';
 
@@ -37,6 +37,12 @@ export const Route = createRootRoute({
         title: 'Petunia Chat',
       },
     ],
+    links: [
+      {
+        rel: 'stylesheet',
+        href: tailwindCss
+      }
+    ]
   }),
   component: RootComponent,
   beforeLoad: async () => {
