@@ -14,7 +14,7 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
       {message.role === 'assistant' && (
         <div 
           dangerouslySetInnerHTML={{ __html: messageMarked }} 
-          className="px-4 py-3 border border-fuchsia-200 rounded"
+          className="prose px-4 py-2 border border-fuchsia-200 rounded dark:prose-invert dark:border-fuchsia-950"
         >
         </div>
       )}

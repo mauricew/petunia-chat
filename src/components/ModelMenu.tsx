@@ -16,13 +16,13 @@ export default function ModelMenu(props: ModelMenuProps) {
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Positioner sideOffset={2}>
-          <Menu.Popup className="px-2 py-1 bg-fuchsia-50">
+          <Menu.Popup className="bg-fuchsia-50 dark:bg-fuchsia-900">
             {Models.map(model => (
               <Menu.Item
                 key={model.openrouterCode}
                 className={`
-                  p-2 hover:bg-fuchsia-200
-                  ${modelCode === model.openrouterCode ? 'bg-fuchsia-100 text-fuchsia-900 font-bold' : 'text-fuchsia-700'}
+                  px-4 py-3 hover:bg-fuchsia-200 dark:hover:bg-fuchsia-700 cursor-pointer
+                  ${modelCode === model.openrouterCode ? 'bg-fuchsia-100 text-fuchsia-900 font-bold dark:bg-fuchsia-800 dark:text-fuchsia-200' : 'text-fuchsia-200'}
                 `}
                 onClick={() => onSetModel(model.openrouterCode)}
               >

@@ -246,16 +246,16 @@ function Home() {
   }, [curThread])
   
   return (
-    <div className="h-screen w-screen flex flex-row bg-zinc-50">
+    <div className="h-screen w-screen flex flex-row">
       <Sidebar
         curThread={curThread}
         user={user}
         userThreads={userThreads}
       />
       <div className="w-full grow flex flex-col">
-        <div className="w-full grow border border-fuchsia-200 overflow-auto scroll-smooth" ref={chatViewRef}>
+        <div className="w-full grow border border-fuchsia-200 overflow-auto scroll-smooth dark:border-fuchsia-700" ref={chatViewRef}>
           {!curThread && (
-            <p className="m-4 p-4 bg-amber-50 border border-amber-300">
+            <p className="m-4 p-4 bg-amber-50 border border-amber-300 dark:bg-yellow-700 dark:border-yellow-600">
               You're about to witness the world's greatest chat app,
               <br />gonna zap the rest no cap cause it'll slap it won't be crap I gotta nap so end of rap.
               Jeb: "please clap"
@@ -282,7 +282,7 @@ function Home() {
           <div className="flex">
             <textarea 
               name="msg"
-              className="w-full p-2 border border-fuchsia-200 border-r-transparent resize-none"
+              className="w-full p-2 border border-fuchsia-200 border-r-transparent resize-none dark:border-fuchsia-700"
               placeholder={running ? "Generating response..." : user ? "Chat away" : "For now I gotta have you log in to use this thing."}
               readOnly={!user || running}
               value={messageInput}
@@ -296,7 +296,7 @@ function Home() {
             />
             <button 
               type="submit"
-              className="px-4 py-1 border border-fuchsia-600 bg-fuchsia-200 font-bold duration-150 hover:bg-gradient-to-tl from-fuchsia-200 to-fuchsia-300 disabled:opacity-50"
+              className="px-4 py-1 border border-fuchsia-600 bg-fuchsia-200 font-bold duration-150 hover:bg-gradient-to-tl from-fuchsia-200 to-fuchsia-300 disabled:opacity-50 dark:text-slate-300 dark:bg-fuchsia-800 dark:from-fuchsia-800 dark:to-fuchsia-700"
               disabled={!user || running}
             >
               Chat

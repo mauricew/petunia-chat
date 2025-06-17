@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 
 import { threadMessagesTable, threadsTable, usersTable } from "db/schema";
@@ -17,15 +17,25 @@ export default function Sidebar(props: {
   const { curThread, user, userThreads } = props;
   const [showMore, setShowMore] = useState(false);
 
+  // Until I get next-themes up and running
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const changeTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+    document.body.classList.toggle('dark');
+  }
+  useLayoutEffect(() => {
+    setTheme(document.body.classList.contains('dark') ? 'dark' : 'light');
+  }, []);
+
   return (
     <nav className="w-60 h-full flex flex-col">
-      <h1 className="mb-4 px-4 py-3 text-center text-lg font-semibold bg-fuchsia-100 text-fuchsia-900 border-b border-fuchsia-400">
+      <h1 className="mb-4 px-4 py-3 text-center text-lg font-semibold bg-fuchsia-100 text-fuchsia-900 border-b border-fuchsia-400 dark:bg-fuchsia-900 dark:text-fuchsia-200">
         Petunia chat
       </h1>
       <div className="flex flex-col flex-1 px-4 py-2">
         <Link
           to="/" search={{ threadId: undefined }}
-          className="flex justify-center p-2 rounded-xl text-lg font-medium bg-fuchsia-100 text-fuchsia-800 border border-fuchsia-300 text-center duration-150 hover:bg-fuchsia-200"
+          className="flex justify-center p-2 rounded-xl text-lg font-medium bg-fuchsia-100 text-fuchsia-800 border border-fuchsia-300 text-center duration-150 hover:bg-fuchsia-200 dark:bg-fuchsia-900 dark:text-fuchsia-300 dark:border-fuchsia-500 dark:hover:bg-fuchsia-800 dark:hover:text-fuchsia-200"
           activeProps={{ className: "bg-fuchsia-800 !text-fuchsia-200 hover:bg-fuchsia-700" }}
           activeOptions={{ includeSearch: true, exact: true }}
         >
@@ -39,8 +49,8 @@ export default function Sidebar(props: {
             <li key={thread.id}>
               <Link
                 to={IndexRoute.to} search={{ threadId: thread.id }}
-                className="block p-2 bg-fuchsia-50 border border-fuchsia-300 text-fuchsia-700 rounded whitespace-nowrap overflow-hidden text-ellipsis duration-150 hover:whitespace-normal hover:text-fuchsia-900"
-                activeProps={{ className: 'bg-fuchsia-200 text-fuchsia-800 font-semibold' }}
+                className="block p-2 bg-fuchsia-50 border border-fuchsia-300 text-fuchsia-700 rounded whitespace-nowrap overflow-hidden text-ellipsis duration-150 hover:whitespace-normal hover:text-fuchsia-900 dark:bg-fuchsia-800 dark:text-fuchsia-300 dark:border-fuchsia-600 dark:hover:text-fuchsia-200"
+                activeProps={{ className: 'bg-fuchsia-200 text-fuchsia-800 font-semibold dark:bg-fuchsia-700 dark:text-fuchsia-200' }}
               >
                 {curThread?.thread?.id === thread.id && '→ '}
                 {thread.name}
@@ -61,6 +71,9 @@ export default function Sidebar(props: {
           <div>
             <p className="font-semibold">{user.email}</p>
             <Link to={LogoutRoute.to} className="py-2 text-sm">Log out</Link>
+            <button onClick={() => changeTheme()}>
+              {theme === 'dark' ? 'Dark Mode (switch to light)' : 'Light Mode (switch to dark)'}
+            </button>
           </div>
         )}
         {!user && (
