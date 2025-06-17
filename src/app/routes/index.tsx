@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { eq, sql } from 'drizzle-orm';
 
-import { chatStream } from 'lib/ollama-chat'
 import { useAuthSession } from 'lib/session';
 import { getThread, getThreadMessages, getUser, getUserThreads } from 'db/queries';
 import { db } from 'db';
@@ -11,6 +10,9 @@ import { threadMessagesTable, threadsTable } from 'db/schema';
 import { generateThreadName } from 'lib/actions';
 import { ChatMessage } from 'components/chat/ChatMessage';
 import Sidebar from 'components/Sidebar';
+import ModelMenu from 'components/ModelMenu';
+import { chatStream } from 'lib/chat';
+import { DefaultModel } from 'lib/chat/models';
 
 type IndexParams = {
   threadId?: number;
@@ -63,7 +65,11 @@ const createThread = createServerFn({ method: 'POST' })
   });
 
 const appendThread = createServerFn({ method: 'POST' })
-  .validator((data: { threadId: number | undefined; msg: string | undefined }) => data)
+  .validator((data: {
+    threadId: number | undefined;
+    msg: string | undefined;
+    model: string | undefined
+  }) => data)
   .handler(async ({ data }) => {
     const session = await useAuthSession(process.env.SESSION_SECRET!);
     if (!session.data.email) {
@@ -76,12 +82,13 @@ const appendThread = createServerFn({ method: 'POST' })
       content: data.msg!,
       completedAt: new Date(),
       state: 'done',
+      model: data.model!
     });
   });
 
 const startChatStream = createServerFn({ method: 'POST', response: 'raw' })
-  .validator((threadId: number | undefined) => threadId)
-  .handler(async ({ data, signal }) => {
+  .validator((data: { threadId: number | undefined; modelName: string | undefined }) => data)
+  .handler(async ({ data: { threadId, modelName }, signal }) => {
     const session = await useAuthSession(process.env.SESSION_SECRET!);
     if (!session.data.email) {
       return new Response('', {
@@ -94,38 +101,43 @@ const startChatStream = createServerFn({ method: 'POST', response: 'raw' })
       });
     }
 
-    const dbMessages = await getThreadMessages(data!);
-    const messages = dbMessages.map(msg => ({ role: msg.role!, content: msg.content! }))
+    const dbMessages = await getThreadMessages(threadId!);
+    const messages = dbMessages.map(msg => ({ role: msg.role! as 'assistant' | 'user', content: msg.content! }))
     
-    // Create a ReadableStream to send chunks of data
     const stream = new ReadableStream({
       async start(controller) {
         const [chatMessage] = await db.insert(threadMessagesTable).values({
-          threadId: data!,
+          threadId: threadId!,
           state: 'generating',
           role: 'assistant',
           content: '',
+          model: modelName!,
         }).returning()
-        const chatResponse = await chatStream(messages);
+        const chatResponse = await chatStream(messages, modelName!);
 
         for await (const part of chatResponse) {
-          if (part.done) {
+          const [choice] = part.choices;
+          if (choice.finish_reason) {
             await db.update(threadMessagesTable)
-              .set({ state: 'done', completedAt: new Date() })
+              .set({ state: 'done', finishReason: choice.finish_reason, completedAt: new Date() })
               .where(eq(threadMessagesTable.id, chatMessage.id));
 
             controller.close();
             return;
           }
-          controller.enqueue(new TextEncoder().encode(part.message.content));
-          await db.update(threadMessagesTable)
-            .set({
-              content: sql`${threadMessagesTable.content} || ${part.message.content}`
-            })
-            .where(eq(threadMessagesTable.id, chatMessage.id));
+
+          const delta = choice.delta.content;
+
+          if (delta) {
+            controller.enqueue(new TextEncoder().encode(delta || ''));
+            await db.update(threadMessagesTable)
+              .set({
+                content: sql`${threadMessagesTable.content} || ${delta}`
+              })
+              .where(eq(threadMessagesTable.id, chatMessage.id));
+          }
         }
 
-        // Ensure we clean up if the request is aborted
         signal.addEventListener('abort', () => {
           db.update(threadMessagesTable)
             .set({ state: 'halted', completedAt: new Date() })
@@ -134,7 +146,7 @@ const startChatStream = createServerFn({ method: 'POST', response: 'raw' })
         })
       },
     })
-  // Return a streaming response
+
   return new Response(stream, {
     headers: {
       'Content-Type': 'text/event-stream',
@@ -175,6 +187,10 @@ function Home() {
   const { threadId } = Route.useSearch();
   const navigate = Route.useNavigate();
 
+  // Gotta switch to path routing for this.
+  const lastMsgModel = curThread ? curThread.messages![curThread.messages!.length - 1]!.model : undefined;
+
+  const [curModel, setCurModel] = useState(lastMsgModel ?? DefaultModel);
   const [messageInput, setMessageInput] = useState('');
   const [responseText, setResponseText] = useState('');
   const [running, setRunning] = useState(false);
@@ -192,7 +208,7 @@ function Home() {
 
     let thread = curThread?.thread;
     if (thread) {
-      await appendThread({ data: { threadId: thread.id, msg: message }});
+      await appendThread({ data: { threadId: thread.id, msg: message, model: curModel }});
       router.invalidate();
     } else {
       thread = await createThread({ data: message });
@@ -200,7 +216,7 @@ function Home() {
     }
     setMessageInput('');
 
-    const response = await startChatStream({ data: thread!.id });
+    const response = await startChatStream({ data: { threadId: thread!.id, modelName: curModel } });
     const reader = response.body?.getReader();
     const decoder = new TextDecoder();
     setResponseText('');
@@ -237,7 +253,7 @@ function Home() {
         userThreads={userThreads}
       />
       <div className="w-full grow flex flex-col">
-        <div className="w-full grow border border-fuchsia-200 overflow-auto" ref={chatViewRef}>
+        <div className="w-full grow border border-fuchsia-200 overflow-auto scroll-smooth" ref={chatViewRef}>
           {!curThread && (
             <p className="m-4 p-4 bg-amber-50 border border-amber-300">
               You're about to witness the world's greatest chat app,
@@ -259,31 +275,36 @@ function Home() {
             </ol>
           )}
         </div>
-        <form className="flex" onSubmit={async (event) => {
+        <form className="flex flex-col" onSubmit={async (event) => {
           event.preventDefault();
           await executeSubmission(event.currentTarget);
         }}>
-          <textarea 
-            name="msg"
-            className="w-full p-2 border border-fuchsia-200 border-r-transparent resize-none"
-            placeholder={running ? "Generating response..." : user ? "Chat away" : "For now I gotta have you log in to use this thing."}
-            readOnly={!user || running}
-            value={messageInput}
-            onChange={e => setMessageInput(e.target.value)}
-            onKeyDown={async (e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                await executeSubmission(e.currentTarget.form!);
-              }
-            }}
-          />
-          <button 
-            type="submit"
-            className="px-4 py-1 border border-fuchsia-600 bg-fuchsia-200 font-bold duration-150 hover:bg-gradient-to-tl from-fuchsia-200 to-fuchsia-300 disabled:opacity-50"
-            disabled={!user || running}
-          >
-            Chat
-          </button>
+          <div className="flex">
+            <textarea 
+              name="msg"
+              className="w-full p-2 border border-fuchsia-200 border-r-transparent resize-none"
+              placeholder={running ? "Generating response..." : user ? "Chat away" : "For now I gotta have you log in to use this thing."}
+              readOnly={!user || running}
+              value={messageInput}
+              onChange={e => setMessageInput(e.target.value)}
+              onKeyDown={async (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  await executeSubmission(e.currentTarget.form!);
+                }
+              }}
+            />
+            <button 
+              type="submit"
+              className="px-4 py-1 border border-fuchsia-600 bg-fuchsia-200 font-bold duration-150 hover:bg-gradient-to-tl from-fuchsia-200 to-fuchsia-300 disabled:opacity-50"
+              disabled={!user || running}
+            >
+              Chat
+            </button>
+          </div>
+          <div>
+            <ModelMenu modelCode={curModel} onSetModel={setCurModel} />
+          </div>
         </form>
       </div>
     </div>

@@ -11,11 +11,6 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
   
   return (
     <li className={`inline-block ${message.role === 'user' ? 'self-end ml-4' : 'self-start mr-4'}`}>
-      <small className="block mb-1">
-        {message.role}; {' '}
-        <time dateTime={message.createdAt?.toISOString()}>{message.createdAt?.toLocaleString()}</time>
-        {message.state === 'generating' && '; generating...'}
-      </small>
       {message.role === 'assistant' && (
         <div 
           dangerouslySetInnerHTML={{ __html: messageMarked }} 
@@ -28,6 +23,11 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
           {message.content}
         </p>
       )}
+      <small className="block mb-1">
+        {message.role}{message.role === 'assistant' && ` [${message.model}]`}; {' '}
+        <time dateTime={message.createdAt?.toISOString()}>{message.createdAt?.toLocaleString()}</time>
+        {message.state === 'generating' && '; generating...'}
+      </small>
     </li>
   )
 };

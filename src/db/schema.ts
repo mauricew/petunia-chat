@@ -26,6 +26,8 @@ export const threadMessagesTable = pgTable('thread_messages', {
   role: text(),
   content: text().notNull(),
   state: text(),
+  model: text(),
+  finishReason: text(),
   completedAt: timestamp(),
   ...auditTimestamps,
 });
