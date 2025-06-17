@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 
 import { threadMessagesTable, threadsTable, usersTable } from "db/schema";
-import { Route as IndexRoute } from '../app/routes/index';
+import { Route as ChatThreadRoute } from '../app/routes/chat/$threadId';
 import { Route as LoginRoute } from '../app/routes/login';
 import { Route as LogoutRoute } from '../app/routes/logout';
 
@@ -11,10 +11,11 @@ export default function Sidebar(props: {
     thread: typeof threadsTable.$inferSelect | null;
     messages: Array<typeof threadMessagesTable.$inferSelect> | null;
   } | null,
+  isCollapsed: boolean;
   user: (typeof usersTable.$inferSelect) | null,
   userThreads: Array< typeof threadsTable.$inferSelect> 
 }) {
-  const { curThread, user, userThreads } = props;
+  const { curThread, isCollapsed, user, userThreads } = props;
   const [showMore, setShowMore] = useState(false);
 
   // Until I get next-themes up and running
@@ -28,13 +29,13 @@ export default function Sidebar(props: {
   }, []);
 
   return (
-    <nav className="w-60 h-full flex flex-col">
+    <nav className={`w-64 h-full flex flex-col duration-150 ${isCollapsed ? '-ml-64' : ''}`}>
       <h1 className="mb-4 px-4 py-3 text-center text-lg font-semibold bg-fuchsia-100 text-fuchsia-900 border-b border-fuchsia-400 dark:bg-fuchsia-900 dark:text-fuchsia-200">
         Petunia chat
       </h1>
       <div className="flex flex-col flex-1 px-4 py-2">
         <Link
-          to="/" search={{ threadId: undefined }}
+          to="/chat"
           className="flex justify-center p-2 rounded-xl text-lg font-medium bg-fuchsia-100 text-fuchsia-800 border border-fuchsia-300 text-center duration-150 hover:bg-fuchsia-200 dark:bg-fuchsia-900 dark:text-fuchsia-300 dark:border-fuchsia-500 dark:hover:bg-fuchsia-800 dark:hover:text-fuchsia-200"
           activeProps={{ className: "bg-fuchsia-800 !text-fuchsia-200 hover:bg-fuchsia-700" }}
           activeOptions={{ includeSearch: true, exact: true }}
@@ -48,7 +49,8 @@ export default function Sidebar(props: {
           {user && userThreads.length > 0 && userThreads.slice(0, showMore ? 50 : 5).map((thread) => (
             <li key={thread.id}>
               <Link
-                to={IndexRoute.to} search={{ threadId: thread.id }}
+                to={ChatThreadRoute.to}
+                params={{ threadId: thread.id.toString() }}
                 className="block p-2 bg-fuchsia-50 border border-fuchsia-300 text-fuchsia-700 rounded whitespace-nowrap overflow-hidden text-ellipsis duration-150 hover:whitespace-normal hover:text-fuchsia-900 dark:bg-fuchsia-800 dark:text-fuchsia-300 dark:border-fuchsia-600 dark:hover:text-fuchsia-200"
                 activeProps={{ className: 'bg-fuchsia-200 text-fuchsia-800 font-semibold dark:bg-fuchsia-700 dark:text-fuchsia-200' }}
               >

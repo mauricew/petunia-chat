@@ -3,6 +3,7 @@ export type PetuniaChatModel = {
   openrouterCode: string;
   modelName: string;
   vendorName: string;
+  hidden?: boolean;
 }
 
 export const DefaultModel = 'google/gemini-2.5-flash-preview-05-20';
@@ -62,4 +63,6 @@ export const Models: Array<PetuniaChatModel> = [
     modelName: 'Grok 3 Mini',
     vendorName: 'xAI',
   }
-]
+];
+
+export const ModelsByOpenrouterCode = Models.reduce((acc, cur) => ({ ...acc, [cur.openrouterCode]: cur }), {});

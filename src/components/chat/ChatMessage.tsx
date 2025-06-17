@@ -1,31 +1,67 @@
-import { threadMessagesTable } from "db/schema";
+import { useMemo, useState } from "react";
 import { marked } from "marked";
-import { useMemo } from "react";
+
+import RelativeTime from "components/RelativeTime";
+import { threadMessagesTable } from "db/schema";
+import MessageToolbar from "./MessageToolbar";
 
 type ChatMessageProps = {
-  message: Partial<typeof threadMessagesTable.$inferSelect>
+  message: Partial<typeof threadMessagesTable.$inferSelect>;
+  onRegenerate: () => Promise<void>;
 }
 
-export const ChatMessage = ({ message }: ChatMessageProps) => {
+export const ChatMessage = ({ message, onRegenerate }: ChatMessageProps) => {
   const messageMarked = useMemo(() => marked(message.content!), [message]);
+  const [recentlyCopied, setRecentlyCopied] = useState(false);
+
+  const messageTime = message.role === 'assistant' ? message.completedAt : message.createdAt;
+
+  const timeTaken = message.completedAt 
+    ? ((message.completedAt.getTime() - message.createdAt!.getTime()) / 1000).toFixed(2)
+    : null;
+
+  const onCopy = () => {
+    window.navigator.clipboard.writeText(message.content!);
+    setRecentlyCopied(true);
+    setTimeout(() => setRecentlyCopied(false), 5000);
+  }
   
   return (
-    <li className={`inline-block ${message.role === 'user' ? 'self-end ml-4' : 'self-start mr-4'}`}>
-      {message.role === 'assistant' && (
-        <div 
-          dangerouslySetInnerHTML={{ __html: messageMarked }} 
-          className="prose px-4 py-2 border border-fuchsia-200 rounded dark:prose-invert dark:border-fuchsia-950"
-        >
-        </div>
-      )}
-      {message.role !== 'assistant' && (
-        <p className="px-4 py-3 border border-slate-400 rounded-lg">
-          {message.content}
-        </p>
-      )}
-      <small className="block mb-1">
-        {message.role}{message.role === 'assistant' && ` [${message.model}]`}; {' '}
-        <time dateTime={message.createdAt?.toISOString()}>{message.createdAt?.toLocaleString()}</time>
+    <li className="flex flex-col">
+      <div className={`px-4 py-2 border rounded
+        ${message.role === 'user' ? 'self-end ml-4 bg-slate-100 border-slate-400 dark:bg-slate-800 dark:border-zinc-600' : 'self-start mr-4 bg-fuchsia-200 border-fuchsia-300 dark:bg-fuchsia-900 dark:border-fuchsia-950'}`}
+      >
+        {message.role === 'assistant' && (
+          <div 
+            dangerouslySetInnerHTML={{ __html: messageMarked }} 
+            className="prose dark:prose-invert"
+          >
+          </div>
+        )}
+        {message.role !== 'assistant' && (
+          <p>
+            {message.content}
+          </p>
+        )}
+      </div>
+      <small className={`block my-1 text-slate-500 ${message.role === 'user' ? 'self-end' : ''}`}>
+        {message.role === 'assistant' && (
+          <MessageToolbar 
+            message={message}
+            onCopy={onCopy}
+            onRegenerate={onRegenerate}
+            recentlyCopied={recentlyCopied}
+          />
+        )}
+        {/* <time dateTime={messageTime?.toISOString()}>{messageTime?.toLocaleString()}</time> */}
+        {messageTime && (
+          <RelativeTime 
+            date={messageTime}
+            className="text-slate-700 dark:text-slate-400"
+            alignPopup={message.role === 'assistant' ? 'start' : 'end'}
+          />
+        )}
+        {message.role === 'assistant' && timeTaken && ` (took ${timeTaken}s)`}
         {message.state === 'generating' && '; generating...'}
       </small>
     </li>

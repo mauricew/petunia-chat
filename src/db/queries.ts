@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 
 import { db } from "db";
 import { threadMessagesTable, threadsTable, usersTable } from "./schema";
@@ -39,7 +39,7 @@ export const getThread = async (threadId: number): Promise<typeof threadsTable.$
 export const getThreadMessages = async (threadId: number): Promise<Array<typeof threadMessagesTable.$inferSelect>> =>
   db.select()
     .from(threadMessagesTable)
-    .where(eq(threadMessagesTable.threadId, threadId))
+    .where(and(eq(threadMessagesTable.threadId, threadId), isNull(threadMessagesTable.regeneratedMessageId)))
     .orderBy(threadMessagesTable.createdAt);
 
 export const getLastUserMessage = async (threadId: number): Promise<typeof threadMessagesTable.$inferSelect | null> => {

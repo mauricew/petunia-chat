@@ -29,6 +29,7 @@ export const threadMessagesTable = pgTable('thread_messages', {
   model: text(),
   finishReason: text(),
   completedAt: timestamp(),
+  regeneratedMessageId: integer().references(() => threadMessagesTable.id),
   ...auditTimestamps,
 });
 
