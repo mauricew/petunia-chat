@@ -3,12 +3,13 @@ import { createFileRoute, notFound, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start';
 
 import { getThread, getThreadMessages } from 'db/queries';
-import { threadMessagesTable, threadsTable } from 'db/schema';
+import { threadMessagesTable, threadsTable } from 'db/schema/petunia';
 import { ChatMessage } from 'components/chat/ChatMessage';
 import ChatInput from 'components/chat/ChatInput';
 import ModelMenu from 'components/ModelMenu';
 import { DefaultModel } from 'lib/chat/models';
 import { appendThread, branchThread, regenerateMessage, startChatStream } from 'lib/actions/chat-actions';
+import { getAuthSession } from 'lib/actions/auth-actions';
 
 const getCurrentThread = createServerFn({ method: 'GET' })
   .validator((threadId: number | undefined) => threadId)
@@ -24,6 +25,11 @@ const getCurrentThread = createServerFn({ method: 'GET' })
 export const Route = createFileRoute('/chat/$threadId')({
   component: RouteComponent,
   loader: async ({ params: { threadId } }) => {
+    const authSession = await getAuthSession();
+    if (!authSession) {
+      return { curThread: null, statusCode: 404 }
+    }
+
     let curThread: {
       thread: typeof threadsTable.$inferSelect | null;
       messages: Array<typeof threadMessagesTable.$inferSelect> | null;
@@ -48,19 +54,19 @@ export const Route = createFileRoute('/chat/$threadId')({
       curThread.stream = response;
     }
 
-    return curThread;
+    return { curThread };
   }
 })
 
 function RouteComponent() {
-  const curThread = Route.useLoaderData();
+  const { curThread, statusCode } = Route.useLoaderData();
   const navigate = Route.useNavigate();
   const router = useRouter();
   const { threadId } = Route.useParams();
   
-  const [curModel, setCurModel] = useState(curThread.lastModel ?? DefaultModel);
+  const [curModel, setCurModel] = useState(curThread?.lastModel ?? DefaultModel);
   const [messageInput, setMessageInput] = useState('');
-  const [running, setRunning] = useState(!!curThread.stream);
+  const [running, setRunning] = useState(!!curThread?.stream);
   const [responseText, setResponseText] = useState('')
 
   const chatViewRef = useRef<HTMLDivElement>(null);
@@ -90,12 +96,12 @@ function RouteComponent() {
   }
 
   useEffect(() => {
-    setCurModel(curThread.lastModel ?? DefaultModel);
+    setCurModel(curThread?.lastModel ?? DefaultModel);
   }, [threadId]);
 
   // This is very dangerous but it's the one way that lets me generate messages without api routes.
   useEffect(() => {
-    if (curThread.stream && !curThread.stream.body?.locked) {
+    if (curThread?.stream && !curThread.stream.body?.locked) {
       // new thread, kick off the message
       handleStreamedMessage(curThread.stream);
     } else if (chatViewRef.current) {
@@ -129,6 +135,17 @@ function RouteComponent() {
     }
     
     setMessageInput('');
+  }
+
+  if (!curThread) {
+    if (statusCode === 404) {
+      return (
+        <div className="flex grow justify-center items-center text-center">Thread not found.</div>
+      )
+    }
+    return (
+      <div>Unknown error.</div>
+    )
   }
 
   return (

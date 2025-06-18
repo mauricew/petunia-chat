@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 
 import { db } from "db";
-import { threadsTable } from "db/schema";
+import { threadsTable } from "db/schema/petunia";
 import { generateThreadTitle } from "./chat";
 
 export const generateThreadName = async (thread: typeof threadsTable.$inferSelect, message: string) => {

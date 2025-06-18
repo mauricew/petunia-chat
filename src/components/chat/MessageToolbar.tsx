@@ -1,5 +1,5 @@
 import { Toolbar } from "@base-ui-components/react";
-import { threadMessagesTable } from "db/schema";
+import { threadMessagesTable } from "db/schema/petunia";
 import { ModelsByOpenrouterCode } from "lib/chat/models";
 import { CopyIcon, GitBranchPlusIcon, RefreshCwIcon } from "lucide-react";
 

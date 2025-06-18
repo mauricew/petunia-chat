@@ -5,26 +5,13 @@ import {
   HeadContent,
   Scripts,
 } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start';
 
 import lexendFontCss from '@fontsource/lexend?url';
 import tailwindCss from '../globals.css?url'
 import highlightJsCss from 'highlight.js/styles/github-dark-dimmed.css?url';
-import { getUser } from 'db/queries';
-import { useAuthSession } from 'lib/session';
 import { ThemeProvider } from 'components/ThemeProvider';
-
-const initLoadUser = createServerFn({ method: 'GET' })
-  .handler(async () => {
-    const session = await useAuthSession(process.env.SESSION_SECRET!);
-
-    if (!session.data.email) {
-      return null;
-    }
-
-    const user = await getUser(session.data.email);
-    return user;
-  })
+import { getAuthSession } from 'lib/actions/auth-actions';
+import { users } from 'db/schema/auth';
 
 export const Route = createRootRoute({
   head: () => ({
@@ -57,8 +44,8 @@ export const Route = createRootRoute({
   }),
   component: RootComponent,
   beforeLoad: async () => {
-    const user = await initLoadUser();
-    return { user };
+    const sessionData = await getAuthSession();
+    return { user: sessionData?.user as typeof users.$inferSelect | undefined };
   }
 })
 

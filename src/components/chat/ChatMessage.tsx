@@ -3,7 +3,7 @@ import { marked } from "marked";
 import hljs from 'highlight.js';
 
 import RelativeTime from "components/RelativeTime";
-import { threadMessagesTable } from "db/schema";
+import { threadMessagesTable } from "db/schema/petunia";
 import MessageToolbar from "./MessageToolbar";
 import { generatePresignedUrl } from "lib/actions/upload-actions";
 import { Link } from "@tanstack/react-router";

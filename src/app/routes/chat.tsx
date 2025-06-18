@@ -1,19 +1,19 @@
-import { createFileRoute, Outlet } from '@tanstack/react-router'
+import { createFileRoute, Outlet, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start';
 
 import Sidebar from 'components/Sidebar';
 import { getUser, getUserThreads } from 'db/queries';
-import { useAuthSession } from 'lib/session';
+import { getAuthSession } from 'lib/actions/auth-actions';
 import { useState } from 'react';
 
 const retrieveUserThreads = createServerFn({ method: 'GET' })
   .handler(async () => {
-    const session = await useAuthSession(process.env.SESSION_SECRET!);
-    if (!session.data.email) {
+    const session = await getAuthSession();
+    if (!session) {
       return [];
     }
 
-    const user = await getUser(session.data.email);
+    const user = await getUser(session.user.email);
     const threads = await getUserThreads(user!.id);
 
     return threads;
@@ -30,6 +30,7 @@ export const Route = createFileRoute('/chat')({
 function RouteComponent() {
   const { user } = Route.useRouteContext();
   const { userThreads } = Route.useLoaderData();
+  const navigate = Route.useNavigate();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -38,6 +39,9 @@ function RouteComponent() {
       <Sidebar
         curThread={null}
         isCollapsed={isCollapsed}
+        onLogoutGlobal={() => {
+          navigate({ to: '/' });
+        }}
         user={user}
         userThreads={userThreads}
       />

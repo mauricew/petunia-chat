@@ -1,12 +1,13 @@
-import { useLayoutEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ComputerIcon, GitBranchIcon, MoonIcon, PencilLineIcon, SunIcon } from 'lucide-react';
 
-import { threadMessagesTable, threadsTable, usersTable } from "db/schema";
+import { threadMessagesTable, threadsTable } from "db/schema/petunia";
 import { Route as ChatThreadRoute } from '../app/routes/chat/$threadId';
 import { Route as LoginRoute } from '../app/routes/login';
-import { Route as LogoutRoute } from '../app/routes/logout';
 import { useTheme } from "./ThemeProvider";
+import { users } from "db/schema/auth";
+import { authClient } from "lib/auth/auth-client";
 
 export default function Sidebar(props: {
   curThread: {
@@ -14,13 +15,21 @@ export default function Sidebar(props: {
     messages: Array<typeof threadMessagesTable.$inferSelect> | null;
   } | null,
   isCollapsed: boolean;
-  user: (typeof usersTable.$inferSelect) | null,
+  onLogoutGlobal: () => void;
+  user: (typeof users.$inferSelect) | undefined,
   userThreads: Array< typeof threadsTable.$inferSelect> 
 }) {
-  const { curThread, isCollapsed, user, userThreads } = props;
+  const { curThread, isCollapsed, onLogoutGlobal, user, userThreads } = props;
   const [showMore, setShowMore] = useState(false);
 
   const { theme, setTheme } = useTheme();
+
+  const { signOut } = authClient
+
+  const logout = async () => {
+    await signOut();
+    onLogoutGlobal();
+  }
 
   return (
     <nav className={`w-64 h-full flex flex-col duration-150 ${isCollapsed ? '-ml-64' : ''}`}>
@@ -67,32 +76,34 @@ export default function Sidebar(props: {
         </ul>
         
         <span className="mt-auto"></span>
-        {user && (
-          <div>
-            <p className="font-semibold">{user.email}</p>
-            <Link to={LogoutRoute.to} className="py-2 text-sm">Log out</Link>
-            <div className="flex justify-around">
-              <button 
-                className={`p-2 hover:bg-gray-200 dark:hover:bg-gray-800 ${theme === 'light' ? 'text-fuchsia-500 dark:text-fuchsia-300' : ''}`}
-                onClick={() => setTheme('light')}
-              >
-                <SunIcon size={16} />
-              </button>
-              <button 
-                className={`p-2 hover:bg-gray-200 dark:hover:bg-gray-800 ${theme === 'system' ? 'text-fuchsia-500 dark:text-fuchsia-300' : ''}`}
-                onClick={() => setTheme('system')}
-              >
-                <ComputerIcon size={16} />
-              </button>
-              <button 
-                className={`p-2 hover:bg-gray-200 dark:hover:bg-gray-800 ${theme === 'dark' ? 'text-fuchsia-500 dark:text-fuchsia-300' : ''}`}
-                onClick={() => setTheme('dark')}
-              >
-                <MoonIcon size={16} />
-              </button>
-            </div>
+        <div>
+          {user && (
+            <>
+              <p className="font-semibold">{user.email}</p>
+              <button className="py-2 text-sm" onClick={async () => await logout()}>Log out</button>
+            </>
+          )}
+          <div className="flex justify-around">
+            <button 
+              className={`p-2 hover:bg-gray-200 dark:hover:bg-gray-800 ${theme === 'light' ? 'text-fuchsia-500 dark:text-fuchsia-300' : ''}`}
+              onClick={() => setTheme('light')}
+            >
+              <SunIcon size={16} />
+            </button>
+            <button 
+              className={`p-2 hover:bg-gray-200 dark:hover:bg-gray-800 ${theme === 'system' ? 'text-fuchsia-500 dark:text-fuchsia-300' : ''}`}
+              onClick={() => setTheme('system')}
+            >
+              <ComputerIcon size={16} />
+            </button>
+            <button 
+              className={`p-2 hover:bg-gray-200 dark:hover:bg-gray-800 ${theme === 'dark' ? 'text-fuchsia-500 dark:text-fuchsia-300' : ''}`}
+              onClick={() => setTheme('dark')}
+            >
+              <MoonIcon size={16} />
+            </button>
           </div>
-        )}
+          </div>
         {!user && (
           <Link to={LoginRoute.to} className="py-2 text-left font-lexend">Log in</Link>
         )}

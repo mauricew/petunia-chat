@@ -1,7 +1,8 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 
 import { db } from "db";
-import { threadMessagesTable, threadsTable, usersTable } from "./schema";
+import { threadMessagesTable, threadsTable } from "./schema/petunia";
+import { users as usersTable } from "./schema/auth";
 
 export const getUser = async (email: string): Promise<typeof usersTable.$inferSelect | null> => {
   const result = await db
@@ -16,7 +17,7 @@ export const getUser = async (email: string): Promise<typeof usersTable.$inferSe
   return result[0];
 }
 
-export const getUserThreads = async (userId: number): Promise<Array<typeof threadsTable.$inferSelect>> =>
+export const getUserThreads = async (userId: string): Promise<Array<typeof threadsTable.$inferSelect>> =>
   db.select()
     .from(threadsTable)
     .where(eq(threadsTable.userId, userId))

@@ -11,7 +11,6 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as LogoutImport } from './routes/logout'
 import { Route as LoginImport } from './routes/login'
 import { Route as ChatImport } from './routes/chat'
 import { Route as IndexImport } from './routes/index'
@@ -19,12 +18,6 @@ import { Route as ChatIndexImport } from './routes/chat/index'
 import { Route as ChatThreadIdImport } from './routes/chat/$threadId'
 
 // Create/Update Routes
-
-const LogoutRoute = LogoutImport.update({
-  id: '/logout',
-  path: '/logout',
-  getParentRoute: () => rootRoute,
-} as any)
 
 const LoginRoute = LoginImport.update({
   id: '/login',
@@ -81,13 +74,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginImport
       parentRoute: typeof rootRoute
     }
-    '/logout': {
-      id: '/logout'
-      path: '/logout'
-      fullPath: '/logout'
-      preLoaderRoute: typeof LogoutImport
-      parentRoute: typeof rootRoute
-    }
     '/chat/$threadId': {
       id: '/chat/$threadId'
       path: '/$threadId'
@@ -123,7 +109,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/chat': typeof ChatRouteWithChildren
   '/login': typeof LoginRoute
-  '/logout': typeof LogoutRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat/': typeof ChatIndexRoute
 }
@@ -131,7 +116,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/logout': typeof LogoutRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat': typeof ChatIndexRoute
 }
@@ -141,24 +125,16 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/chat': typeof ChatRouteWithChildren
   '/login': typeof LoginRoute
-  '/logout': typeof LogoutRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat/': typeof ChatIndexRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/chat' | '/login' | '/logout' | '/chat/$threadId' | '/chat/'
+  fullPaths: '/' | '/chat' | '/login' | '/chat/$threadId' | '/chat/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/logout' | '/chat/$threadId' | '/chat'
-  id:
-    | '__root__'
-    | '/'
-    | '/chat'
-    | '/login'
-    | '/logout'
-    | '/chat/$threadId'
-    | '/chat/'
+  to: '/' | '/login' | '/chat/$threadId' | '/chat'
+  id: '__root__' | '/' | '/chat' | '/login' | '/chat/$threadId' | '/chat/'
   fileRoutesById: FileRoutesById
 }
 
@@ -166,14 +142,12 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChatRoute: typeof ChatRouteWithChildren
   LoginRoute: typeof LoginRoute
-  LogoutRoute: typeof LogoutRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChatRoute: ChatRouteWithChildren,
   LoginRoute: LoginRoute,
-  LogoutRoute: LogoutRoute,
 }
 
 export const routeTree = rootRoute
@@ -188,8 +162,7 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/chat",
-        "/login",
-        "/logout"
+        "/login"
       ]
     },
     "/": {
@@ -204,9 +177,6 @@ export const routeTree = rootRoute
     },
     "/login": {
       "filePath": "login.tsx"
-    },
-    "/logout": {
-      "filePath": "logout.tsx"
     },
     "/chat/$threadId": {
       "filePath": "chat/$threadId.tsx",

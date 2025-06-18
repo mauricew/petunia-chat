@@ -3,13 +3,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from 'zod/v4';
 
 import { db } from "db";
-import { getThread, getThreadMessages, getUser } from "db/queries";
-import { threadMessagesTable, threadsTable } from "db/schema";
+import { getThread, getThreadMessages } from "db/queries";
+import { threadMessagesTable, threadsTable } from "db/schema/petunia";
 import { and, desc, eq, lte, sql } from "drizzle-orm";
 import { generateThreadName } from "lib/actions";
 import { chatStream } from "lib/chat";
-import { useAuthSession } from "lib/session";
 import { generatePresignedUrl } from "./upload-actions";
+import { getAuthSession } from "./auth-actions";
 
 
 export const createThread = createServerFn({ method: 'POST' })
@@ -19,9 +19,12 @@ export const createThread = createServerFn({ method: 'POST' })
     attachmentMime: z.string().optional(),
   }))
   .handler(async ({ data }) => {
-    const session = await useAuthSession(process.env.SESSION_SECRET!);
+    const session = await getAuthSession();
+    if (!session) {
+      throw new Error('no session!');
+    }
+    const { user } = session;
 
-    const user = await getUser(session.data.email!);
     const threadQuery = await db.insert(threadsTable).values({ userId: user!.id }).returning();
     const thread = threadQuery[0];
     const firstUserMessage = await db.insert(threadMessagesTable).values({
@@ -52,8 +55,8 @@ export const appendThread = createServerFn({ method: 'POST' })
     model: string | undefined
   }) => data)
   .handler(async ({ data }) => {
-    const session = await useAuthSession(process.env.SESSION_SECRET!);
-    if (!session.data.email) {
+    const session = await getAuthSession();
+    if (!session) {
       return;
     }
 
@@ -78,8 +81,11 @@ export const appendThread = createServerFn({ method: 'POST' })
 export const branchThread = createServerFn({ method: 'POST' })
   .validator(z.object({ threadMessageId: z.number() }))
   .handler(async ({ data: { threadMessageId }}) => {
-    const session = await useAuthSession(process.env.SESSION_SECRET!);
-    const user = await getUser(session.data.email);
+    const session = await getAuthSession();
+    if (!session) {
+      throw new Error('no session!');
+    }
+    const { user } = session;
 
     const branchMessageQuery = await db.select().from(threadMessagesTable)
       .where(eq(threadMessagesTable.id, threadMessageId))
@@ -160,19 +166,15 @@ export const regenerateMessage = createServerFn({ method: 'POST' })
 export const startChatStream = createServerFn({ method: 'POST', response: 'raw' })
   .validator((data: { threadId: number | undefined; modelName: string | undefined }) => data)
   .handler(async ({ data: { threadId, modelName }, signal }) => {
-    const session = await useAuthSession(process.env.SESSION_SECRET!);
-    if (!session.data.email) {
-      return new Response('', {
-        headers: {
-          'Content-Type': 'text/plain'
-        },
-        status: 401,
-      });
+    const session = await getAuthSession();
+    if (!session) {
+      throw new Error('no session!');
     }
+    const { user } = session;
 
     const thread = await getThread(threadId!);
     const dbMessages = await getThreadMessages(threadId!);
-    if (!thread.name) {
+    if (thread && !thread.name) {
       generateThreadName(thread, dbMessages[0].content);
     }
 
