@@ -6,13 +6,16 @@ import RelativeTime from "components/RelativeTime";
 import { threadMessagesTable } from "db/schema";
 import MessageToolbar from "./MessageToolbar";
 import { generatePresignedUrl } from "lib/actions/upload-actions";
+import { Link } from "@tanstack/react-router";
 
 type ChatMessageProps = {
+  branchSourceId: number | undefined;
   message: Partial<typeof threadMessagesTable.$inferSelect>;
+  onBranch: () => Promise<void>;
   onRegenerate: () => Promise<void>;
 }
 
-export const ChatMessage = ({ message, onRegenerate }: ChatMessageProps) => {
+export const ChatMessage = ({ branchSourceId, message, onBranch, onRegenerate }: ChatMessageProps) => {
   const messageMarked = useMemo(() => marked(message.content!), [message]);
   const [recentlyCopied, setRecentlyCopied] = useState(false);
   const [imageUrl, setImageUrl] = useState<string>()
@@ -68,10 +71,11 @@ export const ChatMessage = ({ message, onRegenerate }: ChatMessageProps) => {
           </div>
         )}
       </div>
-      <small className={`block my-1 text-slate-500 ${message.role === 'user' ? 'self-end' : ''}`}>
+      <p className={`block text-sm my-1 text-slate-500 ${message.role === 'user' ? 'self-end' : ''}`}>
         {message.role === 'assistant' && (
           <MessageToolbar 
             message={message}
+            onBranch={onBranch}
             onCopy={onCopy}
             onRegenerate={onRegenerate}
             recentlyCopied={recentlyCopied}
@@ -87,7 +91,17 @@ export const ChatMessage = ({ message, onRegenerate }: ChatMessageProps) => {
         )}
         {message.role === 'assistant' && timeTaken && ` (took ${timeTaken}s)`}
         {message.state === 'generating' && ' generating...'}
-      </small>
+      </p>
+      {branchSourceId && (
+        <small className="text-stone-800">
+          Branched from{' '}
+            <Link to="/chat/$threadId" params={{ threadId: branchSourceId.toString() }}
+              className="text-blue-900 duration-150 hover:underline hover:text-sky-700">
+              a previous thread
+            </Link>
+          {' '} at this point
+        </small>
+      )}
     </li>
   )
 };

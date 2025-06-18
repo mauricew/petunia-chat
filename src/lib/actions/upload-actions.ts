@@ -1,14 +1,12 @@
-import { randomUUID } from 'node:crypto';
-import { createServerFn } from "@tanstack/react-start";
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { threadsTable } from 'db/schema';
-import { getThread, getThreadMessage } from 'db/queries';
+import { createServerFn } from "@tanstack/react-start";
+
+import { getThreadMessage } from 'db/queries';
 
 const bucketName = 'petunia-uploads';
 const regionName = 'us-east-1';
 const expirationDuration = 300;
-
 
 export const generatePresignedUrl = createServerFn({ method: 'POST' })
   .validator((data: { threadMessageId: number, method: 'get' | 'put' }) => data)

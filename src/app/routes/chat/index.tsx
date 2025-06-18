@@ -32,7 +32,7 @@ function RouteComponent() {
 
     const attachment = formData.get('attachment') as File;
     const { thread, firstUserMessage } = await createThread({ data: {
-      msg: message, model: curModel, attachmentMime: attachment.size > 0 ? attachment.type : undefined,
+      msg: message!, model: curModel, attachmentMime: attachment.size > 0 ? attachment.type : undefined,
     } })!;
 
     if (attachment.size > 0) {

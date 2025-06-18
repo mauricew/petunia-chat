@@ -8,7 +8,7 @@ import { ChatMessage } from 'components/chat/ChatMessage';
 import ChatInput from 'components/chat/ChatInput';
 import ModelMenu from 'components/ModelMenu';
 import { DefaultModel } from 'lib/chat/models';
-import { appendThread, regenerateMessage, startChatStream } from 'lib/actions/chat-actions';
+import { appendThread, branchThread, regenerateMessage, startChatStream } from 'lib/actions/chat-actions';
 
 const getCurrentThread = createServerFn({ method: 'GET' })
   .validator((threadId: number | undefined) => threadId)
@@ -54,6 +54,7 @@ export const Route = createFileRoute('/chat/$threadId')({
 
 function RouteComponent() {
   const curThread = Route.useLoaderData();
+  const navigate = Route.useNavigate();
   const router = useRouter();
   const { threadId } = Route.useParams();
   
@@ -99,6 +100,11 @@ function RouteComponent() {
     }
   }, [curThread]);
 
+  const branch = async (threadMessageId: number) => {
+    const { thread } = await branchThread({ data: { threadMessageId } });
+    navigate({ to: '/chat/$threadId', params: { threadId: thread.id.toString() } });
+  }
+
   const regenMessage = async (threadMessageId: number) => {
     await regenerateMessage({ data: { threadMessageId } });
     await router.invalidate();
@@ -141,6 +147,8 @@ function RouteComponent() {
               {curThread.messages.map(msg => (
                 <ChatMessage 
                   key={msg.id}
+                  branchSourceId={msg.lastBranchedMessage ? curThread.thread.branchedFromThreadId : null}
+                  onBranch={async () => await branch(msg.id)}
                   onRegenerate={async () => await regenMessage(msg.id)}
                   message={
                     msg.role === 'assistant' && msg.state === 'generating'
@@ -149,7 +157,6 @@ function RouteComponent() {
                   } />
               ))}
             </ol>
-
             <p className="m-4 text-center text-sm text-stone-500">AI isn't perfect (unlike you) so check for mistakes.</p>
           </div>
         )}

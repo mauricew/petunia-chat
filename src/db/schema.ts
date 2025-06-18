@@ -17,6 +17,7 @@ export const threadsTable = pgTable('threads', {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
   name: text(),
   userId: integer().notNull().references(() => usersTable.id),
+  branchedFromThreadId: integer().references(() => threadsTable.id),
   ...auditTimestamps,
 });
 
@@ -32,6 +33,7 @@ export const threadMessagesTable = pgTable('thread_messages', {
   finishReason: text(),
   completedAt: timestamp(),
   regeneratedMessageId: integer().references(() => threadMessagesTable.id),
+  lastBranchedMessage: boolean(), // not great eh
   ...auditTimestamps,
 });
 

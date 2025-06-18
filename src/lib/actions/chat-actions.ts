@@ -1,27 +1,29 @@
 import { randomUUID } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
+import { z } from 'zod/v4';
 
 import { db } from "db";
 import { getThreadMessages, getUser } from "db/queries";
 import { threadMessagesTable, threadsTable } from "db/schema";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, lte, sql } from "drizzle-orm";
 import { generateThreadName } from "lib/actions";
 import { chatStream } from "lib/chat";
 import { useAuthSession } from "lib/session";
 import { generatePresignedUrl } from "./upload-actions";
 
+
 export const createThread = createServerFn({ method: 'POST' })
-  .validator((data: { 
-    msg: string | undefined,
-    attachmentMime: string | undefined;
-    model: string | undefined 
-  }
-  ) => ({ msg: data.msg, model: data.model, attachmentMime: data.attachmentMime }))
+  .validator(z.object({
+    msg: z.string(),
+    model: z.string(),
+    attachmentMime: z.string().optional(),
+  }))
   .handler(async ({ data }) => {
     const session = await useAuthSession(process.env.SESSION_SECRET!);
 
-    const user = await getUser(session.data.email);
-    const [thread] = await db.insert(threadsTable).values({ userId: user!.id }).returning();
+    const user = await getUser(session.data.email!);
+    const threadQuery = await db.insert(threadsTable).values({ userId: user!.id }).returning();
+    const thread = threadQuery[0];
     const firstUserMessage = await db.insert(threadMessagesTable).values({
       threadId: thread.id,
       role: 'user',
@@ -74,6 +76,57 @@ export const appendThread = createServerFn({ method: 'POST' })
       model: data.model,
     }).returning();
   });
+
+export const branchThread = createServerFn({ method: 'POST' })
+  .validator(z.object({ threadMessageId: z.number() }))
+  .handler(async ({ data: { threadMessageId }}) => {
+    const session = await useAuthSession(process.env.SESSION_SECRET!);
+    const user = await getUser(session.data.email);
+
+    const branchMessageQuery = await db.select().from(threadMessagesTable)
+      .where(eq(threadMessagesTable.id, threadMessageId))
+      .limit(1);
+
+    if (branchMessageQuery.length === 0) {
+      throw new Error('thread message not found');
+    }
+
+    const [branchMessage] = branchMessageQuery;
+
+    const threadQuery = await db.select().from(threadsTable)
+      .where(eq(threadsTable.id, branchMessage.threadId))
+      .limit(1);
+    
+    const [oldThread] = threadQuery;
+
+    const messagesQuery = await db.select().from(threadMessagesTable)
+      .orderBy(threadMessagesTable.createdAt)
+      .where(and(eq(threadMessagesTable.threadId, oldThread.id), lte(threadMessagesTable.id, branchMessage.id)));
+
+    const newThreadObject = {
+      name: oldThread.name,
+      userId: oldThread.userId,
+      branchedFromThreadId: oldThread.id,
+    }
+    const newThreadQuery = await db.insert(threadsTable).values(newThreadObject).returning();
+    const newThread = newThreadQuery[0];
+
+    const newMessages = messagesQuery.map(msg => ({
+      threadId: newThread.id,
+      role: msg.role,
+      content: msg.content,
+      attachmentFilename: msg.attachmentFilename,
+      attachmentMime: msg.attachmentMime,
+      state: msg.state,
+      model: msg.model,
+      finishReason: msg.finishReason,
+      completedAt: msg.completedAt,
+    }))
+
+    await db.insert(threadMessagesTable).values(newMessages);
+
+    return { thread: newThread };
+  })
 
 export const regenerateMessage = createServerFn({ method: 'POST' })
   .validator((data: { threadMessageId: number | undefined }) => data)
