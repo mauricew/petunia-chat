@@ -4,9 +4,10 @@ export type PetuniaChatModel = {
   modelName: string;
   vendorName: string;
   hidden?: boolean;
+  preview?: boolean;
 }
 
-export const DefaultModel = 'google/gemini-2.5-flash-preview-05-20';
+export const DefaultModel = 'google/gemini-2.5-flash';
 
 export const Models: Array<PetuniaChatModel> = [
   {
@@ -44,11 +45,32 @@ export const Models: Array<PetuniaChatModel> = [
     openrouterCode: 'google/gemini-2.5-pro-preview',
     modelName: 'Gemini 2.5 Pro Preview',
     vendorName: 'Google',
+    hidden: true,
   },
   {
     vendorCode: 'gemini-2.5-flash-preview-05-20',
     openrouterCode: 'google/gemini-2.5-flash-preview-05-20',
     modelName: 'Gemini 2.5 Flash Preview',
+    vendorName: 'Google',
+    hidden: true,
+  },
+  {
+    vendorCode: 'models/gemini-2.5-flash-lite-preview-06-17',
+    openrouterCode: 'google/gemini-2.5-flash-lite-preview-06-17',
+    modelName: 'Gemini 2.5 Flash Lite',
+    vendorName: 'Google',
+    preview: true,
+  },
+  {
+    vendorCode: 'models/gemini-2.5-flash',
+    openrouterCode: 'google/gemini-2.5-flash',
+    modelName: 'Gemini 2.5 Flash',
+    vendorName: 'Google',
+  },
+  {
+    vendorCode: 'gemini-2.5-pro',
+    openrouterCode: 'google/gemini-2.5-pro',
+    modelName: 'Gemini 2.5 Pro',
     vendorName: 'Google',
   },
   {
@@ -66,3 +88,8 @@ export const Models: Array<PetuniaChatModel> = [
 ];
 
 export const ModelsByOpenrouterCode = Models.reduce((acc, cur) => ({ ...acc, [cur.openrouterCode]: cur }), {});
+
+export const ModelsByVendor = Models.reduce((acc, cur) => ({ 
+  ...acc,
+  [cur.vendorName]: [...(acc[cur.vendorName] || []), cur]
+}), {});

@@ -15,7 +15,6 @@ export const ChatMessage = ({ message, onRegenerate }: ChatMessageProps) => {
   const messageMarked = useMemo(() => marked(message.content!), [message]);
   const [recentlyCopied, setRecentlyCopied] = useState(false);
   const [imageUrl, setImageUrl] = useState<string>()
-  console.log(imageUrl)
 
   const messageTime = message.role === 'assistant' ? message.completedAt : message.createdAt;
 
@@ -36,8 +35,6 @@ export const ChatMessage = ({ message, onRegenerate }: ChatMessageProps) => {
     }
   }, [message]);
 
-  console.log(messageMarked)
-  
   return (
     <li className="flex flex-col">
       <div className={`px-4 py-2 border rounded
