@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { Stream } from 'openai/core/streaming';
-import { ChatCompletionAssistantMessageParam, ChatCompletionMessageParam, ChatCompletionUserMessageParam } from 'openai/resources/chat';
+import { ChatCompletionMessageParam } from 'openai/resources/chat';
 
 const client = new OpenAI({ 
   baseURL: 'https://openrouter.ai/api/v1',
@@ -21,7 +21,7 @@ const threadTitlePrompt: ChatCompletionMessageParam = {
   only provide a summary of the input.`
 }
 
-export const chatStream = async (chatMessages: Array<ChatCompletionUserMessageParam | ChatCompletionAssistantMessageParam>, model: string): Promise<Stream<OpenAI.Chat.Completions.ChatCompletionChunk> & { _request_id?: string | null; }> => {
+export const chatStream = async (chatMessages: Array<ChatCompletionMessageParam>, model: string): Promise<Stream<OpenAI.Chat.Completions.ChatCompletionChunk> & { _request_id?: string | null; }> => {
   return client.chat.completions.create({
     messages: [systemPrompt, ...chatMessages],
     model,

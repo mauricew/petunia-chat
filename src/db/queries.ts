@@ -36,6 +36,20 @@ export const getThread = async (threadId: number): Promise<typeof threadsTable.$
   return result[0];
 }
 
+export const getThreadMessage = async (threadId: number): Promise<typeof threadMessagesTable.$inferSelect | null> => {
+  const result = await db
+    .select()
+    .from(threadMessagesTable)
+    .where(eq(threadMessagesTable.id, threadId))
+    .limit(1);
+
+  if (result.length === 0) {
+    return null;
+  }
+
+  return result[0];
+}
+
 export const getThreadMessages = async (threadId: number): Promise<Array<typeof threadMessagesTable.$inferSelect>> =>
   db.select()
     .from(threadMessagesTable)

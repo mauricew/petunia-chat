@@ -10,6 +10,19 @@ services:
     ports:
       - 5432:5432
 
+  s3:
+    image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z-cpuv1
+    ports:
+      - 9000:9000
+      - 9001:9001
+    volumes:
+      - s3_data:/data
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=petunia
+      - MINIO_ROOT_PASSWORD=petunia!
+    
+
   app:
     build: .
     depends_on:
@@ -21,3 +34,4 @@ services:
 
 volumes:
   postgres_data:
+  s3_data:

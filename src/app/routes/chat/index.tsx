@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 
 import ChatInput from 'components/chat/ChatInput'
@@ -6,6 +6,8 @@ import Welcome from 'components/chat/Welcome'
 import { createThread } from 'lib/actions/chat-actions'
 import ModelMenu from 'components/ModelMenu'
 import { DefaultModel } from 'lib/chat/models'
+import ChatAttachment from 'components/chat/ChatAttachment'
+import { generatePresignedUrl } from 'lib/actions/upload-actions'
 
 export const Route = createFileRoute('/chat/')({
   component: RouteComponent,
@@ -16,7 +18,10 @@ function RouteComponent() {
 
   const [curModel, setCurModel] = useState(DefaultModel);
   const [messageInput, setMessageInput] = useState('');
+  const [file, setFile] = useState<File>();
   const [running, setRunning] = useState(false);
+
+  const fileObjectUrl = useMemo(() => file && URL.createObjectURL(file), [file]);
 
   const executeSubmission = async (form: HTMLFormElement) => {
     if (!messageInput) {
@@ -25,7 +30,16 @@ function RouteComponent() {
     const formData = new FormData(form);
     const message = formData.get('msg')?.toString();
 
-    const thread = await createThread({ data: { msg: message, model: curModel } });
+    const attachment = formData.get('attachment') as File;
+    const { thread, firstUserMessage } = await createThread({ data: {
+      msg: message, model: curModel, attachmentMime: attachment.size > 0 ? attachment.type : undefined,
+    } })!;
+
+    if (attachment.size > 0) {
+      const { url } = await generatePresignedUrl({ data: { threadMessageId: firstUserMessage.id, method: 'put' } });
+      
+      const uploadResponse = await fetch(url, { method: 'PUT', body: attachment });
+    }
 
     navigate({ to: `/chat/$threadId`, params: { threadId: thread!.id.toString() } });
   }
@@ -41,11 +55,16 @@ function RouteComponent() {
         <div className="flex">
           <ChatInput
             isLoggedIn={true}
-            isRunning={false}
+            isRunning={running}
             messageInput={messageInput}
             onMessageInputChange={setMessageInput}
             onSubmit={executeSubmission}
           />
+          {file && (
+            <div className="flex justify-center items-center p-2 border">
+              <img src={fileObjectUrl} className="max-h-16 object-contain" />
+            </div>
+          )}
           <button 
             type="submit"
             className="px-4 py-1 border border-fuchsia-600 bg-fuchsia-200 font-bold duration-150 hover:bg-gradient-to-tl from-fuchsia-200 to-fuchsia-300 disabled:opacity-50 dark:text-slate-300 dark:bg-fuchsia-800 dark:from-fuchsia-800 dark:to-fuchsia-700"
@@ -54,8 +73,9 @@ function RouteComponent() {
             Chat
           </button>
         </div>
-        <div className="py-2">
+        <div className="py-2 flex justify-between items-center">
           <ModelMenu modelCode={curModel} onSetModel={setCurModel} />
+          <ChatAttachment onChange={setFile} value={file} />
         </div>
       </form>
     </div>

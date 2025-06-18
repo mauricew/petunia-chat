@@ -25,6 +25,8 @@ export const threadMessagesTable = pgTable('thread_messages', {
   threadId: integer().notNull().references(() => threadsTable.id),
   role: text(),
   content: text().notNull(),
+  attachmentFilename: text(),
+  attachmentMime: text(),
   state: text(),
   model: text(),
   finishReason: text(),

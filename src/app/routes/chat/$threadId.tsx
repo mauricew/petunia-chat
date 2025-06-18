@@ -133,11 +133,11 @@ function RouteComponent() {
   }
 
   return (
-    <div className="h-full flex flex-col grow relative">
+    <div className="flex flex-col grow relative">
       <div className="w-full flex grow p-2 border border-fuchsia-200 overflow-auto scroll-smooth dark:border-fuchsia-700" ref={chatViewRef}>
         {curThread.messages && (
-          <div className="flex flex-col grow">
-            <ol className="mx-auto max-w-4xl flex flex-col justify-end px-2 py-6 space-y-2">
+          <div className="flex flex-col grow overflow-auto">
+            <ol className="flex flex-col grow justify-end px-2 py-6 space-y-2">
               {curThread.messages.map(msg => (
                 <ChatMessage 
                   key={msg.id}

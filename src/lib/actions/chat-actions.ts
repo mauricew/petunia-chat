@@ -1,4 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
+
 import { db } from "db";
 import { getThreadMessages, getUser } from "db/queries";
 import { threadMessagesTable, threadsTable } from "db/schema";
@@ -6,27 +8,29 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { generateThreadName } from "lib/actions";
 import { chatStream } from "lib/chat";
 import { useAuthSession } from "lib/session";
+import { generatePresignedUrl } from "./upload-actions";
 
 export const createThread = createServerFn({ method: 'POST' })
   .validator((data: { 
-    msg: string | undefined, 
-    model: string | undefined }
-  ) => ({ msg: data.msg, model: data.model }))
+    msg: string | undefined,
+    attachmentMime: string | undefined;
+    model: string | undefined 
+  }
+  ) => ({ msg: data.msg, model: data.model, attachmentMime: data.attachmentMime }))
   .handler(async ({ data }) => {
     const session = await useAuthSession(process.env.SESSION_SECRET!);
-    if (!session.data.email) {
-      return;
-    }
 
     const user = await getUser(session.data.email);
     const [thread] = await db.insert(threadsTable).values({ userId: user!.id }).returning();
-    await db.insert(threadMessagesTable).values({
+    const firstUserMessage = await db.insert(threadMessagesTable).values({
       threadId: thread.id,
       role: 'user',
       content: data.msg!,
+      attachmentFilename: data.attachmentMime ? randomUUID() : null,
+      attachmentMime: data.attachmentMime,
       completedAt: new Date(),
       state: 'done',
-    });
+    }).returning();;
     await generateThreadName(thread, data.msg!);
 
 
@@ -38,7 +42,7 @@ export const createThread = createServerFn({ method: 'POST' })
       model: data.model,
     }).returning()
 
-    return thread;
+    return { thread, firstUserMessage: firstUserMessage[0] };
   });
 
 export const appendThread = createServerFn({ method: 'POST' })
@@ -118,7 +122,28 @@ export const startChatStream = createServerFn({ method: 'POST', response: 'raw' 
     const dbMessages = await getThreadMessages(threadId!);
     const messages = dbMessages
       .filter(msg => msg.state === 'done')
-      .map(msg => ({ role: msg.role! as 'assistant' | 'user', content: msg.content! }))
+      .map(async msg => {
+        let content;
+        if (msg.attachmentFilename) {
+          const { url } = await generatePresignedUrl({ data: { threadMessageId: msg.id, method: 'get' } });
+          const fileRepsonse = await fetch(url);
+          const arrayBuffer = await fileRepsonse.arrayBuffer();
+          const b64 = Buffer.from(arrayBuffer).toString('base64');
+          content = [
+            { type: 'text', text: msg.content! },
+            { type: 'image_url', image_url: `data:${msg.attachmentMime!};base64,${b64}` }
+          ];
+        } else {
+          content = msg.content!
+        }
+
+        return  { 
+          role: msg.role! as 'assistant' | 'user', 
+          content,
+        }
+      })
+
+    const awaitedMessages  = await Promise.all(messages);
 
     const [chatMessage] = await db.select().from(threadMessagesTable)
       .where(and(eq(threadMessagesTable.threadId, threadId!), eq(threadMessagesTable.role, 'assistant'), eq(threadMessagesTable.state, 'generating')))
@@ -127,7 +152,12 @@ export const startChatStream = createServerFn({ method: 'POST', response: 'raw' 
     
     const stream = new ReadableStream({
       async start(controller) {
-        const chatResponse = await chatStream(messages, modelName!);
+        let chatResponse;
+        try {
+          chatResponse = await chatStream(awaitedMessages, modelName!);
+        } catch (err) {
+          return;
+        }
 
         for await (const part of chatResponse) {
           const [choice] = part.choices;
