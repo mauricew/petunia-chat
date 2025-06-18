@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { marked } from "marked";
+import hljs from 'highlight.js';
 
 import RelativeTime from "components/RelativeTime";
 import { threadMessagesTable } from "db/schema";
@@ -15,6 +16,8 @@ export const ChatMessage = ({ message, onRegenerate }: ChatMessageProps) => {
   const messageMarked = useMemo(() => marked(message.content!), [message]);
   const [recentlyCopied, setRecentlyCopied] = useState(false);
   const [imageUrl, setImageUrl] = useState<string>()
+
+  const assistantContentRef = useRef<HTMLDivElement>(null);
 
   const messageTime = message.role === 'assistant' ? message.completedAt : message.createdAt;
 
@@ -33,6 +36,9 @@ export const ChatMessage = ({ message, onRegenerate }: ChatMessageProps) => {
       generatePresignedUrl({ data: { threadMessageId: message.id!, method: 'get' } })
         .then(({ url }) => setImageUrl(url));
     }
+    if (message.role === 'assistant' && message.state === 'done' && assistantContentRef.current) {
+      assistantContentRef.current.querySelectorAll('code').forEach(hljs.highlightElement);
+    }
   }, [message]);
 
   return (
@@ -44,6 +50,7 @@ export const ChatMessage = ({ message, onRegenerate }: ChatMessageProps) => {
           <div 
             dangerouslySetInnerHTML={{ __html: messageMarked }} 
             className="prose dark:prose-invert"
+            ref={assistantContentRef}
           >
           </div>
         )}

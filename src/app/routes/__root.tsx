@@ -8,6 +8,7 @@ import {
 import { createServerFn } from '@tanstack/react-start';
 
 import tailwindCss from '../globals.css?url'
+import highlightJsCss from 'highlight.js/styles/github-dark-dimmed.css?url';
 import { getUser } from 'db/queries';
 import { useAuthSession } from 'lib/session';
 
@@ -41,6 +42,10 @@ export const Route = createRootRoute({
       {
         rel: 'stylesheet',
         href: tailwindCss
+      },
+      {
+        rel: 'stylesheet',
+        href: highlightJsCss,
       }
     ]
   }),
