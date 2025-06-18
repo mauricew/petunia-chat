@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from 'zod/v4';
 
 import { db } from "db";
-import { getThreadMessages, getUser } from "db/queries";
+import { getThread, getThreadMessages, getUser } from "db/queries";
 import { threadMessagesTable, threadsTable } from "db/schema";
 import { and, desc, eq, lte, sql } from "drizzle-orm";
 import { generateThreadName } from "lib/actions";
@@ -32,9 +32,7 @@ export const createThread = createServerFn({ method: 'POST' })
       attachmentMime: data.attachmentMime,
       completedAt: new Date(),
       state: 'done',
-    }).returning();;
-    await generateThreadName(thread, data.msg!);
-
+    }).returning();
 
     await db.insert(threadMessagesTable).values({
       threadId: thread!.id,
@@ -172,7 +170,13 @@ export const startChatStream = createServerFn({ method: 'POST', response: 'raw' 
       });
     }
 
+    const thread = await getThread(threadId!);
     const dbMessages = await getThreadMessages(threadId!);
+    if (!thread.name) {
+      generateThreadName(thread, dbMessages[0].content);
+    }
+
+
     const messages = dbMessages
       .filter(msg => msg.state === 'done')
       .map(async msg => {

@@ -47,7 +47,9 @@ export const ChatMessage = ({ branchSourceId, message, onBranch, onRegenerate }:
   return (
     <li className="flex flex-col">
       <div className={`px-4 py-2 border rounded
-        ${message.role === 'user' ? 'self-end ml-4 bg-slate-100 border-slate-400 dark:bg-slate-800 dark:border-zinc-600' : 'self-start mr-4 bg-fuchsia-200 border-fuchsia-300 dark:bg-fuchsia-900 dark:border-fuchsia-950'}`}
+        ${message.role === 'user' 
+          ? 'min-w-sm max-w-1/2 self-end ml-4 bg-slate-100 border-slate-400 dark:bg-slate-800 dark:border-zinc-600' 
+          : 'self-start mr-4 bg-fuchsia-200 border-fuchsia-300 dark:bg-fuchsia-900 dark:border-fuchsia-950'}`}
       >
         {message.role === 'assistant' && message.state !== 'generating' && message.content && (
           <div 
@@ -57,8 +59,8 @@ export const ChatMessage = ({ branchSourceId, message, onBranch, onRegenerate }:
           >
           </div>
         )}
-        {message.role === 'assistant' && message.state === 'generating' && !message.content && (
-          <p>Please wait a jiffy...</p>
+        {message.role === 'assistant' && message.state === 'generating' && message.content && (
+          <div>{message.content}</div>
         )}
         {message.role !== 'assistant' && (
           <div>
@@ -71,7 +73,7 @@ export const ChatMessage = ({ branchSourceId, message, onBranch, onRegenerate }:
           </div>
         )}
       </div>
-      <p className={`block text-sm my-1 text-slate-500 ${message.role === 'user' ? 'self-end' : ''}`}>
+      <div className={`block text-sm my-1 text-slate-500 ${message.role === 'user' ? 'self-end' : ''}`}>
         {message.role === 'assistant' && (
           <MessageToolbar 
             message={message}
@@ -91,12 +93,12 @@ export const ChatMessage = ({ branchSourceId, message, onBranch, onRegenerate }:
         )}
         {message.role === 'assistant' && timeTaken && ` (took ${timeTaken}s)`}
         {message.state === 'generating' && ' generating...'}
-      </p>
+      </div>
       {branchSourceId && (
-        <small className="text-stone-800">
+        <small className="text-stone-800 dark:text-stone-300">
           Branched from{' '}
             <Link to="/chat/$threadId" params={{ threadId: branchSourceId.toString() }}
-              className="text-blue-900 duration-150 hover:underline hover:text-sky-700">
+              className="text-blue-900 duration-150 hover:underline hover:text-sky-700 dark:text-blue-500 dark:hover:text-blue-300">
               a previous thread
             </Link>
           {' '} at this point

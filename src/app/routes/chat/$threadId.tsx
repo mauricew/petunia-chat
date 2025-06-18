@@ -60,7 +60,7 @@ function RouteComponent() {
   
   const [curModel, setCurModel] = useState(curThread.lastModel ?? DefaultModel);
   const [messageInput, setMessageInput] = useState('');
-  const [running, setRunning] = useState(false);
+  const [running, setRunning] = useState(!!curThread.stream);
   const [responseText, setResponseText] = useState('')
 
   const chatViewRef = useRef<HTMLDivElement>(null);
@@ -76,6 +76,9 @@ function RouteComponent() {
       if (done) {
         setRunning(false);
         router.invalidate();
+        if (chatViewRef.current) {
+          chatViewRef.current.scrollTop = chatViewRef.current?.scrollHeight;
+        }
         return;
       }
       setResponseText(prev => `${prev}${decoder.decode(value)}`);
@@ -108,11 +111,6 @@ function RouteComponent() {
   const regenMessage = async (threadMessageId: number) => {
     await regenerateMessage({ data: { threadMessageId } });
     await router.invalidate();
-
-    /*
-    const response = await startChatStream({ data: { threadId: curThread.thread!.id, modelName: curModel! } });
-    handleStreamedMessage(response);
-    */
   }
 
   const executeSubmission = async (form: HTMLFormElement) => {
@@ -120,9 +118,9 @@ function RouteComponent() {
       return;
     }
     setResponseText('');
-    setRunning(true);
     const formData = new FormData(form);
     const message = formData.get('msg')?.toString().trim();
+    setRunning(true);
 
     let thread = curThread?.thread;
     if (thread) {
@@ -131,11 +129,6 @@ function RouteComponent() {
     }
     
     setMessageInput('');
-
-    /*
-    const response = await startChatStream({ data: { threadId: thread!.id, modelName: curModel! } });
-    handleStreamedMessage(response);
-    */
   }
 
   return (

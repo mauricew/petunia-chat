@@ -7,10 +7,12 @@ import {
 } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start';
 
+import lexendFontCss from '@fontsource/lexend?url';
 import tailwindCss from '../globals.css?url'
 import highlightJsCss from 'highlight.js/styles/github-dark-dimmed.css?url';
 import { getUser } from 'db/queries';
 import { useAuthSession } from 'lib/session';
+import { ThemeProvider } from 'components/ThemeProvider';
 
 const initLoadUser = createServerFn({ method: 'GET' })
   .handler(async () => {
@@ -41,6 +43,10 @@ export const Route = createRootRoute({
     links: [
       {
         rel: 'stylesheet',
+        href: lexendFontCss
+      },
+      {
+        rel: 'stylesheet',
         href: tailwindCss
       },
       {
@@ -66,12 +72,16 @@ function RootComponent() {
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html>
+    <html suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
       <body className="bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-200">
-        {children}
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <main>
+            {children}
+          </main>
+        </ThemeProvider>
         <Scripts />
       </body>
     </html>

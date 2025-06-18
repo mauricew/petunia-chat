@@ -9,8 +9,6 @@ type ChatAttachmentType = {
 export default function ChatAttachment(props: ChatAttachmentType) {
   const { onChange, value } = props
 
-  console.log(value);
-
   const onDrop = useCallback((files: File[]) => {
     onChange(files[0]);
   }, []);
@@ -27,9 +25,9 @@ export default function ChatAttachment(props: ChatAttachmentType) {
   return (
     <div {...getRootProps()}>
       <input name="attachment" {...getInputProps()} />
-      <div className="flex space-x-2 text-sm">
+      <div className="flex mx-2 space-x-2 text-sm">
         {!value && (
-          <p>{isDragActive ? 'drop here' : 'drag files here'}</p>
+          <p>{isDragActive ? 'drop here' : 'drag files/click here'}</p>
         )}
         {value && (
           <>

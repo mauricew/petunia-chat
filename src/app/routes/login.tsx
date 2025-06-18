@@ -54,7 +54,7 @@ function Login() {
   return (
     <div className="h-screen flex items-center">
       <div className="container max-w-md mx-auto">
-        <h2 className="mb-4 text-xl font-semibold text-center">Authenticate with Petunia Chat</h2>
+        <h2 className="mb-4 text-xl font-lexend font-semibold text-center">Authenticate with Petunia Chat</h2>
         <p className="text-center">If you don't have an account we'll create one for you.</p>
         <div className="my-4 p-4 border">
           <form

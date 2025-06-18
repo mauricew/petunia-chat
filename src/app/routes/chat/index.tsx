@@ -35,6 +35,8 @@ function RouteComponent() {
       msg: message!, model: curModel, attachmentMime: attachment.size > 0 ? attachment.type : undefined,
     } })!;
 
+    setRunning(true);
+
     if (attachment.size > 0) {
       const { url } = await generatePresignedUrl({ data: { threadMessageId: firstUserMessage.id, method: 'put' } });
       
@@ -46,10 +48,11 @@ function RouteComponent() {
 
   return (
     <div className="flex flex-col justify-between flex-auto">
-      <Welcome />
+      <Welcome onMessage={setMessageInput} />
       <form
-        onSubmit={e => {
+        onSubmit={async (e) => {
           e.preventDefault();
+          await executeSubmission(e.currentTarget);
         }}
       >
         <div className="flex">
