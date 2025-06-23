@@ -4,11 +4,13 @@ import ClaudeLogo from 'assets/logos/claude.svg?url'
 import GeminiLogo from 'assets/logos/gemini.svg?url'
 import GrokLogo from 'assets/logos/grok.svg?url'
 import OpenAILogo from 'assets/logos/openai.svg?url'
+import { subscriptionsTable } from 'db/schema/subscriptions';
 import { Models, ModelsByOpenrouterCode } from 'lib/chat/models';
 
 type ModelMenuProps = {
   modelCode: string;
   onSetModel: (nextModel: string) => void;
+  plan: typeof subscriptionsTable.$inferSelect['plan'] | undefined
 }
 
 const ModelLogos = {
@@ -19,9 +21,13 @@ const ModelLogos = {
 };
 
 export default function ModelMenu(props: ModelMenuProps) {
-  const { modelCode, onSetModel } = props;
+  const { modelCode, onSetModel, plan = 'free' } = props;
 
   const currentModel = ModelsByOpenrouterCode[modelCode];
+
+  const filteredModels = Models
+    .filter(model => !model.hidden)
+    .filter(model => (plan === 'free' && model.minimumTier === 'free') || (plan === 'basic' && model.minimumTier !== 'premium') || plan === 'premium')
 
   return (
     <Menu.Root>
@@ -31,7 +37,7 @@ export default function ModelMenu(props: ModelMenuProps) {
       <Menu.Portal>
         <Menu.Positioner sideOffset={2}>
           <Menu.Popup className="bg-fuchsia-50 dark:bg-fuchsia-900">
-            {Models.filter(model => !model.hidden).map(model => (
+            {filteredModels.map(model => (
               <Menu.Item
                 key={model.openrouterCode}
                 className={`

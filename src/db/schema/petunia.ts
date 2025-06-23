@@ -2,7 +2,7 @@ import { relations } from "drizzle-orm";
 import { boolean, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { users } from "./auth";
 
-const auditTimestamps = {
+export const auditTimestamps = {
   createdAt: timestamp().notNull().defaultNow(),
   updatedAt: timestamp().notNull().defaultNow().$onUpdate(() => new Date())
 }

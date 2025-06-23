@@ -28,7 +28,7 @@ export const Route = createFileRoute('/chat')({
 })
 
 function RouteComponent() {
-  const { user } = Route.useRouteContext();
+  const { user, planInfo: { plan: currentPlan, remaining: limitInfo } } = Route.useRouteContext();
   const { userThreads } = Route.useLoaderData();
   const navigate = Route.useNavigate();
 
@@ -37,11 +37,12 @@ function RouteComponent() {
   return (
     <div className="h-screen w-screen flex flex-row">
       <Sidebar
-        curThread={null}
+        currentPlan={currentPlan}
         isCollapsed={isCollapsed}
         onLogoutGlobal={() => {
           navigate({ to: '/' });
         }}
+        limitInfo={limitInfo}
         user={user}
         userThreads={userThreads}
       />

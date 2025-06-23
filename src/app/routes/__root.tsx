@@ -10,7 +10,7 @@ import lexendFontCss from '@fontsource/lexend?url';
 import tailwindCss from '../globals.css?url'
 import highlightJsCss from 'highlight.js/styles/github-dark-dimmed.css?url';
 import { ThemeProvider } from 'components/ThemeProvider';
-import { getAuthSession } from 'lib/actions/auth-actions';
+import { getAuthSession, getUserSubscriptionInfo } from 'lib/actions/auth-actions';
 import { users } from 'db/schema/auth';
 
 export const Route = createRootRoute({
@@ -45,7 +45,17 @@ export const Route = createRootRoute({
   component: RootComponent,
   beforeLoad: async () => {
     const sessionData = await getAuthSession();
-    return { user: sessionData?.user as typeof users.$inferSelect | undefined };
+    const user = sessionData?.user;
+
+    let planInfo;
+    if (user) {
+      planInfo = await getUserSubscriptionInfo();
+    }
+
+    return { 
+      user: user as typeof users.$inferSelect | undefined,
+      planInfo
+    };
   }
 })
 

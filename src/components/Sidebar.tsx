@@ -2,24 +2,25 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ComputerIcon, GitBranchIcon, MoonIcon, PencilLineIcon, SunIcon } from 'lucide-react';
 
-import { threadMessagesTable, threadsTable } from "db/schema/petunia";
+import { threadsTable } from "db/schema/petunia";
 import { Route as ChatThreadRoute } from '../app/routes/chat/$threadId';
 import { Route as LoginRoute } from '../app/routes/login';
 import { useTheme } from "./ThemeProvider";
 import { users } from "db/schema/auth";
 import { authClient } from "lib/auth/auth-client";
+import LimitationDialog from "./LimitationDialog";
+import { subscriptionsTable } from "db/schema/subscriptions";
+import { addDays, formatRelative } from "date-fns";
 
 export default function Sidebar(props: {
-  curThread: {
-    thread: typeof threadsTable.$inferSelect | null;
-    messages: Array<typeof threadMessagesTable.$inferSelect> | null;
-  } | null,
+  currentPlan: typeof subscriptionsTable.$inferSelect['plan'],
   isCollapsed: boolean;
   onLogoutGlobal: () => void;
+  limitInfo: { remaining: number; earliest: Date } | undefined,
   user: (typeof users.$inferSelect) | undefined,
   userThreads: Array< typeof threadsTable.$inferSelect> 
 }) {
-  const { curThread, isCollapsed, onLogoutGlobal, user, userThreads } = props;
+  const { currentPlan, isCollapsed, onLogoutGlobal, limitInfo, user, userThreads } = props;
   const [showMore, setShowMore] = useState(false);
 
   const { theme, setTheme } = useTheme();
@@ -80,6 +81,18 @@ export default function Sidebar(props: {
           {user && (
             <>
               <p className="font-semibold">{user.email}</p>
+              <div className="flex justify-between">
+                <small>
+                  <strong>{currentPlan}</strong> plan &bull;{' '}
+                  {limitInfo!.remaining === 0 && (
+                    <>Refills {formatRelative(addDays(limitInfo!.earliest, 1), new Date())} </>
+                  )}
+                  {limitInfo!.remaining > 0 && (
+                    <>{limitInfo!.remaining} messages left</>
+                  )}
+                </small>
+                <LimitationDialog limitInfo={limitInfo!} />
+              </div>
               <button className="py-2 text-sm" onClick={async () => await logout()}>Log out</button>
             </>
           )}

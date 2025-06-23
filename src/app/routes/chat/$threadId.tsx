@@ -34,7 +34,6 @@ export const Route = createFileRoute('/chat/$threadId')({
       thread: typeof threadsTable.$inferSelect | null;
       messages: Array<typeof threadMessagesTable.$inferSelect> | null;
       lastModel?: string | null;
-      stream?: Response | undefined;
     } = await getCurrentThread({ data: parseInt(threadId) });
 
     if (!curThread || !curThread.thread) {
@@ -45,20 +44,12 @@ export const Route = createFileRoute('/chat/$threadId')({
       curThread.lastModel = curThread.messages![curThread.messages!.length - 1]?.model;
     }
 
-    // See the useEffect below for why.
-    const firstMessageArray = curThread.messages!.filter(m => m.role === 'assistant' && m.state === 'generating')
-    if (firstMessageArray.length === 1) {
-      // unanswered message, kick off the stream
-      const [firstMessage] = firstMessageArray;
-      const response = await startChatStream({ data: { threadId: curThread.thread!.id, modelName: firstMessage.model! } });
-      curThread.stream = response;
-    }
-
     return { curThread };
   }
 })
 
 function RouteComponent() {
+  const { planInfo } = Route.useRouteContext();
   const { curThread, statusCode } = Route.useLoaderData();
   const navigate = Route.useNavigate();
   const router = useRouter();
@@ -66,7 +57,7 @@ function RouteComponent() {
   
   const [curModel, setCurModel] = useState(curThread?.lastModel ?? DefaultModel);
   const [messageInput, setMessageInput] = useState('');
-  const [running, setRunning] = useState(!!curThread?.stream);
+  const [running, setRunning] = useState(false);
   const [responseText, setResponseText] = useState('')
 
   const chatViewRef = useRef<HTMLDivElement>(null);
@@ -74,6 +65,7 @@ function RouteComponent() {
   // const lastMessageIsUser = curThread.messages ? curThread.messages[curThread.messages.length - 1].role === 'user' : false;
 
   const handleStreamedMessage = (streamResponse: Response) => {
+    setRunning(true);
     const reader = streamResponse.body?.getReader();
     
     const decoder = new TextDecoder();
@@ -101,9 +93,20 @@ function RouteComponent() {
 
   // This is very dangerous but it's the one way that lets me generate messages without api routes.
   useEffect(() => {
-    if (curThread?.stream && !curThread.stream.body?.locked) {
-      // new thread, kick off the message
-      handleStreamedMessage(curThread.stream);
+    const startThread = async (curThread) => {
+      // See the useEffect below for why.
+      const firstMessageArray = curThread.messages!.filter(m => m.role === 'assistant' && m.state === 'generating')
+      if (firstMessageArray.length === 1) {
+        // unanswered message, kick off the stream
+        const [firstMessage] = firstMessageArray;
+        const response = await startChatStream({ data: { threadId: curThread.thread!.id, modelName: firstMessage.model! } });
+        return response;
+      }
+    }
+    if (curThread) {
+      startThread(curThread).then(res => {
+        res && handleStreamedMessage(res);
+      })
     } else if (chatViewRef.current) {
       chatViewRef.current.scrollTop = chatViewRef.current?.scrollHeight;
     }
@@ -123,9 +126,12 @@ function RouteComponent() {
     if (!messageInput) {
       return;
     }
+    if (planInfo.remaining.remaining <= 0) {
+      return;
+    }
     setResponseText('');
     const formData = new FormData(form);
-    const message = formData.get('msg')?.toString().trim();
+    const message = formData.get('msg')?.toString().trim()!;
     setRunning(true);
 
     let thread = curThread?.thread;
@@ -178,6 +184,7 @@ function RouteComponent() {
         <div className="flex">
           <ChatInput
             isLoggedIn={true}
+            isOutOfMessages={planInfo.remaining.remaining <= 0}
             isRunning={running}
             messageInput={messageInput}
             onMessageInputChange={setMessageInput}
@@ -192,7 +199,7 @@ function RouteComponent() {
           </button>
         </div>
         <div className="py-2">
-          <ModelMenu modelCode={curModel!} onSetModel={setCurModel} />
+          <ModelMenu plan={planInfo?.plan} modelCode={curModel!} onSetModel={setCurModel} />
         </div>
       </form>
     </div>

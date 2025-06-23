@@ -2,12 +2,13 @@ import { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 
 type ChatAttachmentType = {
+  disabled: boolean;
   onChange: (file?: File) => void;
   value: File | undefined;
 }
 
 export default function ChatAttachment(props: ChatAttachmentType) {
-  const { onChange, value } = props
+  const { disabled, onChange, value } = props
 
   const onDrop = useCallback((files: File[]) => {
     onChange(files[0]);
@@ -20,6 +21,7 @@ export default function ChatAttachment(props: ChatAttachmentType) {
      },
      maxFiles: 1,
      onDrop,
+     disabled,
   });
 
   return (

@@ -60,7 +60,7 @@ export const ChatMessage = ({ branchSourceId, message, onBranch, onRegenerate }:
           </div>
         )}
         {message.role === 'assistant' && message.state === 'generating' && message.content && (
-          <div>{message.content}</div>
+          <div className="prose dark:prose-invert">{message.content}</div>
         )}
         {message.role !== 'assistant' && (
           <div>

@@ -1,8 +1,11 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, between, count, desc, eq, gte, isNull, min, or, sql } from "drizzle-orm";
+import { subDays } from 'date-fns';
 
 import { db } from "db";
 import { threadMessagesTable, threadsTable } from "./schema/petunia";
 import { users as usersTable } from "./schema/auth";
+import { DAILY_MESSAGE_COUNT } from "lib/constants";
+import { subscriptionsTable } from "./schema/subscriptions";
 
 export const getUser = async (email: string): Promise<typeof usersTable.$inferSelect | null> => {
   const result = await db
@@ -15,6 +18,45 @@ export const getUser = async (email: string): Promise<typeof usersTable.$inferSe
   }
 
   return result[0];
+}
+
+
+export const getUserPlan = async (userId: string): Promise<typeof subscriptionsTable.$inferSelect['plan']> => {
+  const plan = await db
+    .select({ plan: subscriptionsTable.plan })
+    .from(subscriptionsTable)
+    .where(and(
+      eq(subscriptionsTable.userId, userId),
+      or(isNull(subscriptionsTable.expiresAt), between(sql`NOW()`, subscriptionsTable.effectiveAt, subscriptionsTable.expiresAt))
+    ))
+    .limit(1);
+
+  if (plan.length === 0) {
+    return 'free';
+  }
+
+  return plan[0].plan;
+}
+
+export const getUserRemainingMessages = async(userId: string) => {
+  const yesterday = subDays(new Date(), 1);
+
+  const plan = await getUserPlan(userId);
+
+  const [{ count: msgCount, earliest }] = await db
+    .select({ count: count(), earliest: min(threadMessagesTable.createdAt) })
+    .from(threadMessagesTable)
+    .innerJoin(threadsTable, eq(threadsTable.id, threadMessagesTable.threadId))
+    .where(and(
+      eq(threadMessagesTable.role, 'user'),
+      eq(threadsTable.userId, userId),
+      gte(threadMessagesTable.createdAt, yesterday)
+    ));
+
+  return {
+    earliest,
+    remaining: DAILY_MESSAGE_COUNT[plan] - msgCount
+  };
 }
 
 export const getUserThreads = async (userId: string): Promise<Array<typeof threadsTable.$inferSelect>> =>

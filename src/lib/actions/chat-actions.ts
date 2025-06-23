@@ -1,16 +1,40 @@
 import { randomUUID } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
+import { and, desc, eq, lte, sql } from "drizzle-orm";
 import { z } from 'zod/v4';
 
 import { db } from "db";
-import { getThread, getThreadMessages } from "db/queries";
+import { getThread, getThreadMessages, getUserPlan, getUserRemainingMessages } from "db/queries";
 import { threadMessagesTable, threadsTable } from "db/schema/petunia";
-import { and, desc, eq, lte, sql } from "drizzle-orm";
 import { generateThreadName } from "lib/actions";
 import { chatStream } from "lib/chat";
 import { generatePresignedUrl } from "./upload-actions";
 import { getAuthSession } from "./auth-actions";
+import { Models } from "lib/chat/models";
+import { User } from "better-auth";
 
+
+const assertEverythingIsOk = async (data: { user: User, model: string }) => {
+  const { user, model } = data;
+
+  const { remaining } = await getUserRemainingMessages(user.id)
+    if (remaining <= 0) {
+      throw new Error('Out of messages!');
+    }
+
+    const plan = await getUserPlan(user.id);
+    const modelInfo = Models.find(m => m.openrouterCode === data.model);
+    if (!modelInfo) {
+      throw new Error('Not a model bro');
+    }
+    if (
+      (plan === 'free' && modelInfo.minimumTier !== 'free') || 
+      (plan === 'basic' && modelInfo.minimumTier !== 'premium')
+    ) {
+      throw new Error(`You think you're some 1337 h4x0r nice try`);
+    }
+
+}
 
 export const createThread = createServerFn({ method: 'POST' })
   .validator(z.object({
@@ -25,6 +49,8 @@ export const createThread = createServerFn({ method: 'POST' })
     }
     const { user } = session;
 
+    await assertEverythingIsOk({ user, model: data.model });
+    
     const threadQuery = await db.insert(threadsTable).values({ userId: user!.id }).returning();
     const thread = threadQuery[0];
     const firstUserMessage = await db.insert(threadMessagesTable).values({
@@ -51,8 +77,8 @@ export const createThread = createServerFn({ method: 'POST' })
 export const appendThread = createServerFn({ method: 'POST' })
   .validator((data: {
     threadId: number | undefined;
-    msg: string | undefined;
-    model: string | undefined
+    msg: string;
+    model: string
   }) => data)
   .handler(async ({ data }) => {
     const session = await getAuthSession();
@@ -60,13 +86,17 @@ export const appendThread = createServerFn({ method: 'POST' })
       return;
     }
 
+    const { user } = session
+
+    await assertEverythingIsOk({ user, model: data.model });
+
     await db.insert(threadMessagesTable).values({
       threadId: data.threadId!,
       role: 'user',
-      content: data.msg!,
+      content: data.msg,
       completedAt: new Date(),
       state: 'done',
-      model: data.model!
+      model: data.model
     });
 
     await db.insert(threadMessagesTable).values({
