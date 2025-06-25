@@ -63,7 +63,7 @@ function RouteComponent() {
       >
         <div className="flex">
           <ChatInput
-            isLoggedIn={true}
+            isLoggedIn={!!planInfo}
             isRunning={running}
             messageInput={messageInput}
             onMessageInputChange={setMessageInput}
