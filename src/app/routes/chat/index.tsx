@@ -24,13 +24,13 @@ function RouteComponent() {
 
   const fileObjectUrl = useMemo(() => file && URL.createObjectURL(file), [file]);
   
-  const inputDisabled = running || planInfo.remaining.remaining <= 0;
+  const inputDisabled = running || planInfo?.remaining?.remaining <= 0;
 
   const executeSubmission = async (form: HTMLFormElement) => {
     if (!messageInput) {
       return;
     }
-    if (planInfo.remaining.remaining <= 0) {
+    if (planInfo?.remaining?.remaining <= 0) {
       return;
     }
     const formData = new FormData(form);
@@ -68,7 +68,7 @@ function RouteComponent() {
             messageInput={messageInput}
             onMessageInputChange={setMessageInput}
             onSubmit={executeSubmission}
-            isOutOfMessages={planInfo.remaining.remaining <= 0}
+            isOutOfMessages={planInfo?.remaining?.remaining <= 0}
           />
           {file && (
             <div className="flex justify-center items-center p-2 border">

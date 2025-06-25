@@ -126,7 +126,7 @@ function RouteComponent() {
     if (!messageInput) {
       return;
     }
-    if (planInfo.remaining.remaining <= 0) {
+    if (planInfo?.remaining && planInfo.remaining?.remaining <= 0) {
       return;
     }
     setResponseText('');
@@ -184,7 +184,7 @@ function RouteComponent() {
         <div className="flex">
           <ChatInput
             isLoggedIn={true}
-            isOutOfMessages={planInfo.remaining.remaining <= 0}
+            isOutOfMessages={planInfo?.remaining?.remaining <= 0}
             isRunning={running}
             messageInput={messageInput}
             onMessageInputChange={setMessageInput}
